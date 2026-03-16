@@ -21,15 +21,15 @@ const HOSTS = ["John", "Melissa"];
 
 const AVATARS = {
   "John": "👨‍🍳", "Melissa": "👩‍🍳", "The Mayor": "🎩",
-  "Michele": "💃", "Vice": "😏", "April": "🌸",
+  "Michele": "💃", "Vice": "🕶️", "April": "🌸",
   "Rashawn": "🔥", "Tess": "⭐", "Garrett": "🤙",
-  "Lindsey": "🦋", "Jay": "🕶️",
+  "Lindsey": "🦋",
 };
 
-const CREW_NAMES = ["John","Melissa","The Mayor","Michele","Vice","April","Rashawn","Tess","Garrett","Lindsey","Jay"];
+const CREW_NAMES = ["John","Melissa","The Mayor","Michele","Vice","April","Rashawn","Tess","Garrett","Lindsey"];
 
 const DRINKS = [
-  { name:"Tito's",               sub:"Handmade Vodka",      emoji:"🥃", color:"#e8c07a", desc:"On the rocks, soda, whatever — the house standard.",                         fans:["The Mayor","April","Lindsey","Jay"] },
+  { name:"Tito's",               sub:"Handmade Vodka",      emoji:"🥃", color:"#e8c07a", desc:"On the rocks, soda, whatever — the house standard.",                         fans:["The Mayor","April","Lindsey","Vice"] },
   { name:"Coors Banquet",        sub:"The Banquet Beer",    emoji:"🍺", color:"#f0c040", desc:"Cold, classic, always in the cooler.",                                        fans:["John","Vice","Garrett"] },
   { name:"Smoked Old Fashioned", sub:"Rashawn's Specialty", emoji:"🪵", color:"#e07850", desc:"Bourbon, bitters, sugar cube — and Rashawn's smoke gun. The house cocktail.", fans:["Rashawn"] },
   { name:"MomWater",             sub:"Spiked Sparkling",    emoji:"💧", color:"#7ad0e8", desc:"Fruity, light, and dangerously drinkable.",                                   fans:["Melissa","Michele","Tess"] },
