@@ -45,7 +45,7 @@ const BADGES = [
   { icon:"🔥", label:"On Fire",    desc:"5 visits in a week",   earned:false },
 ];
 
-const tabs = ["Status","Crew","Menu","Board","🎯"];
+const tabs = ["Status","Crew","Menu","Board","Darts"];
 
 /* ─── STYLES ────────────────────────────────────────── */
 const css = `
@@ -610,7 +610,7 @@ export default function App() {
           )}
 
           {/* DARTS */}
-          {activeTab==="🎯" && <Darts />}
+          {activeTab==="Darts" && <Darts />}
 
           {/* BOARD */}
           {activeTab==="Board" && (
@@ -649,10 +649,6 @@ export default function App() {
           Members Only · All Roads Lead to Happy Hour
         </div>
       </div>
-    </>
-  );
-}
-
     </>
   );
 }
