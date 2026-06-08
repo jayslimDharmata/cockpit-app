@@ -18,8 +18,8 @@ const HOSTS = ["John","Melissa"];
 
 const AVATARS = {
   "John":"👨‍🍳","Melissa":"👩‍🍳","The Mayor":"🎩",
-  "Michele":"🕵️","Vice":"🕶️","April":"🎃",
-  "Rashawn":"⚾","Tess":"⭐","Garrett":"👮","Lindsey":"🧮",
+  "Michele":"💃","Vice":"🕶️","April":"🌸",
+  "Rashawn":"🔥","Tess":"⭐","Garrett":"🤙","Lindsey":"🦋",
 };
 
 const CREW_NAMES = ["John","Melissa","The Mayor","Michele","Vice","April","Rashawn","Tess","Garrett","Lindsey"];
@@ -412,6 +412,125 @@ function WalkInModal({ onClose, onAdd }) {
   );
 }
 
+/* ─── CLAP LOADER ────────────────────────────────────── */
+function ClapLoader() {
+  const [phase, setPhase] = useState(0);
+  // phase 0 = hands apart, 1 = CLAP, 2 = apart, 3 = CLAP, 4 = fade to title
+
+  useEffect(() => {
+    const timings = [
+      [120,  1],   // first clap
+      [320,  2],   // apart
+      [440,  3],   // second clap
+      [640,  4],   // show title
+    ];
+    const timers = timings.map(([ms, p]) => setTimeout(() => setPhase(p), ms));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const isClap = phase === 1 || phase === 3;
+
+  return (
+    <div style={{
+      background:bg, minHeight:"100vh",
+      display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+      fontFamily:"'Oswald',sans-serif",
+      overflow:"hidden",
+    }}>
+      <style>{css}
+        {`
+        @keyframes clapLeft {
+          0%   { transform: translateX(0) rotate(0deg); }
+          100% { transform: translateX(38px) rotate(15deg); }
+        }
+        @keyframes clapRight {
+          0%   { transform: translateX(0) rotate(0deg) scaleX(-1); }
+          100% { transform: translateX(-38px) rotate(-15deg) scaleX(-1); }
+        }
+        @keyframes apartLeft {
+          0%   { transform: translateX(38px) rotate(15deg); }
+          100% { transform: translateX(0) rotate(0deg); }
+        }
+        @keyframes apartRight {
+          0%   { transform: translateX(-38px) rotate(-15deg) scaleX(-1); }
+          100% { transform: translateX(0) rotate(0deg) scaleX(-1); }
+        }
+        @keyframes clapFlash {
+          0%   { opacity:0; transform:scale(0.4); }
+          40%  { opacity:1; transform:scale(1.3); }
+          100% { opacity:0; transform:scale(1); }
+        }
+        @keyframes titleReveal {
+          0%   { opacity:0; transform:translateY(16px); }
+          100% { opacity:1; transform:translateY(0); }
+        }
+        @keyframes clapShake {
+          0%,100% { transform:translate(-50%,-50%) scale(1); }
+          25%     { transform:translate(-48%,-52%) scale(1.05); }
+          75%     { transform:translate(-52%,-48%) scale(1.05); }
+        }
+        .clap-left-go   { animation: clapLeft  0.12s ease-out forwards; }
+        .clap-right-go  { animation: clapRight 0.12s ease-out forwards; }
+        .apart-left-go  { animation: apartLeft  0.14s ease-out forwards; }
+        .apart-right-go { animation: apartRight 0.14s ease-out forwards; }
+        .clap-flash     { animation: clapFlash 0.25s ease-out forwards; }
+        .title-reveal   { animation: titleReveal 0.5s ease forwards; }
+        `}
+      </style>
+
+      {/* Hands */}
+      <div style={{ position:"relative", height:120, width:220, display:"flex", alignItems:"center", justifyContent:"center" }}>
+
+        {/* Impact flash */}
+        {isClap && (
+          <div className="clap-flash" style={{
+            position:"absolute", top:"50%", left:"50%",
+            transform:"translate(-50%,-50%)",
+            fontSize:48, zIndex:10, pointerEvents:"none",
+            lineHeight:1,
+          }}>✨</div>
+        )}
+
+        {/* Left hand */}
+        <div className={
+          phase===1?"clap-left-go":
+          phase===2?"apart-left-go":
+          phase===3?"clap-left-go":
+          phase===4?"apart-left-go":""
+        } style={{
+          fontSize:72, lineHeight:1,
+          display:"inline-block",
+          transformOrigin:"right center",
+          marginRight:8,
+        }}>👏</div>
+
+      </div>
+
+      {/* CLAP text burst */}
+      {isClap && (
+        <div className="clap-flash" style={{
+          fontSize:28, fontWeight:900, color:red,
+          letterSpacing:6, fontFamily:"'Oswald',sans-serif",
+          textShadow:`0 0 20px ${red}`,
+          marginTop:-20,
+        }}>CLAP</div>
+      )}
+
+      {/* Title fades in after claps */}
+      {phase === 4 && (
+        <div className="title-reveal" style={{ textAlign:"center", marginTop:32 }}>
+          <div style={{ fontSize:9, letterSpacing:5, color:"rgba(255,120,120,0.45)", marginBottom:6, fontWeight:300 }}>✦ GARAGE BAR ✦</div>
+          <div className="neon-title" style={{ fontSize:36 }}>The COCKpit</div>
+          <div style={{ color:dim, fontSize:11, letterSpacing:3, marginTop:16 }}>
+            <span className="spinner">⟳</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── MAIN APP ───────────────────────────────────────── */
 export default function App() {
   const [myName, setMyName]         = useState(()=>localStorage.getItem("cockpit_user")||null);
@@ -513,14 +632,7 @@ export default function App() {
 
   if (!myName) return <NamePicker onSelect={handleSelectName} />;
 
-  if (loading) return (
-    <div style={{ background:bg, minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, fontFamily:"'Oswald',sans-serif" }}>
-      <style>{css}</style>
-      <div className="neon-title" style={{ fontSize:32 }}>The COCKpit</div>
-      <div style={{ color:dim, fontSize:11, letterSpacing:3 }}>OPENING UP...</div>
-      <Spinner />
-    </div>
-  );
+  if (loading) return <ClapLoader />;
 
   if (error) return (
     <div style={{ background:bg, minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12, fontFamily:"'Oswald',sans-serif", padding:24 }}>
