@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import Darts from "./Darts";
 
 /* ─── API ───────────────────────────────────────────── */
 const API = "https://script.google.com/macros/s/AKfycbzq-SohecQc4eKbre6TJrW7T50isYP-IrAyMvRZpq5uYyaDPeIxDNivmB5rxY3w74xN/exec";
@@ -44,19 +45,7 @@ const BADGES = [
   { icon:"🔥", label:"On Fire",    desc:"5 visits in a week",   earned:false },
 ];
 
-const TV_PRESETS = [
-  { label:"No game on",        icon:"📺", detail:"" },
-  { label:"Braves Game",       icon:"⚾", detail:"ATL · ESPN" },
-  { label:"Heat Game",         icon:"🏀", detail:"MIA · Bally Sports" },
-  { label:"Lightning Game",    icon:"🏒", detail:"TB · ESPN+" },
-  { label:"Bucs Game",         icon:"🏈", detail:"TB · NBC" },
-  { label:"UFC / Boxing",      icon:"🥊", detail:"Main card live" },
-  { label:"Golf",              icon:"⛳", detail:"Live on CBS" },
-  { label:"NASCAR",            icon:"🏁", detail:"Live on FOX" },
-  { label:"Something else...", icon:"🎲", detail:"" },
-];
-
-const tabs = ["Status","Crew","Menu","Board"];
+const tabs = ["Status","Crew","Menu","Board","🎯"];
 
 /* ─── STYLES ────────────────────────────────────────── */
 const css = `
@@ -110,7 +99,6 @@ const css = `
   .mono         { font-family:'Share Tech Mono',monospace!important; }
   .tv-screen    { animation:crtFlicker 9s infinite; }
   .tv-scanline  { position:absolute; left:0; right:0; height:18%; background:linear-gradient(transparent,rgba(255,255,255,0.025),transparent); animation:tvScanline 4s linear infinite; pointer-events:none; z-index:10; }
-  .channel-flip { animation:channelFlip .3s ease forwards; }
   .spinner      { animation:spin .8s linear infinite; display:inline-block; }
   .name-btn:hover { transform:translateY(-2px); background:rgba(255,32,32,0.18) !important; border-color:rgba(255,80,80,0.5) !important; }
   * { box-sizing:border-box; }
@@ -193,108 +181,78 @@ function NamePicker({ onSelect }) {
 
 /* ─── TV WIDGET ─────────────────────────────────────── */
 function TVWidget({ isHost, whatsOn, onSetWhatsOn }) {
-  const [tvOn, setTvOn]             = useState(true);
-  const [showPicker, setShowPicker] = useState(false);
-  const [flipping, setFlipping]     = useState(false);
-  const [selected, setSelected]     = useState(0);
-  const [customText, setCustomText] = useState("");
-  const [saving, setSaving]         = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(whatsOn || "");
+  const [saving, setSaving]   = useState(false);
+  const [tvOn, setTvOn]       = useState(true);
 
-  useEffect(() => {
-    const idx = TV_PRESETS.findIndex(p => p.label === whatsOn);
-    if (idx >= 0) setSelected(idx);
-    else if (whatsOn && whatsOn !== "No game on") {
-      setSelected(TV_PRESETS.length - 1);
-      setCustomText(whatsOn);
-    }
-  }, [whatsOn]);
+  useEffect(() => { setDraft(whatsOn || ""); }, [whatsOn]);
 
-  const current  = TV_PRESETS[selected];
-  const isCustom = selected === TV_PRESETS.length - 1;
-
-  const pick = async (i) => {
-    setFlipping(true);
-    setSelected(i);
-    setTimeout(() => setFlipping(false), 160);
-    if (i !== TV_PRESETS.length - 1) {
-      setSaving(true);
-      await onSetWhatsOn(TV_PRESETS[i].label);
-      setSaving(false);
-      setShowPicker(false);
-    }
-  };
-
-  const saveCustom = async () => {
-    if (!customText.trim()) return;
+  const save = async () => {
     setSaving(true);
-    await onSetWhatsOn(customText.trim());
+    await onSetWhatsOn(draft.trim() || "Nothing on");
     setSaving(false);
-    setShowPicker(false);
+    setEditing(false);
   };
 
   return (
     <div style={{ background:"#0a0202", border:"3px solid #1e0808", borderRadius:10, overflow:"hidden", marginBottom:18, boxShadow:"0 0 0 1px rgba(255,32,32,0.15), 0 8px 32px rgba(0,0,0,0.7)" }}>
+      {/* Bezel */}
       <div style={{ background:"linear-gradient(180deg,#1e0a0a,#130505)", padding:"7px 12px 6px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
           <div style={{ width:6, height:6, borderRadius:"50%", background:tvOn?"#ff2020":"#2a0808", boxShadow:tvOn?"0 0 6px #ff2020":"none" }} />
           <span className="mono" style={{ fontSize:9, color:"rgba(255,255,255,0.4)", letterSpacing:2 }}>TCL · COCKPIT TV</span>
         </div>
         <button onClick={()=>setTvOn(o=>!o)} style={{ background:"none", border:"1px solid rgba(255,255,255,0.15)", borderRadius:3, color:tvOn?"#ff5050":"#444", fontSize:8, padding:"2px 8px", letterSpacing:1, fontFamily:"'Oswald',sans-serif", cursor:"pointer" }}>
-          {tvOn ? "ON" : "OFF"}
+          {tvOn?"ON":"OFF"}
         </button>
       </div>
 
-      <div className="tv-screen" style={{ background:tvOn?"#060101":"#020000", minHeight:100, position:"relative", overflow:"hidden", transition:"background .4s" }}>
+      {/* Screen */}
+      <div className="tv-screen" style={{ background:tvOn?"#060101":"#020000", minHeight:90, position:"relative", overflow:"hidden", transition:"background .4s", padding:"14px 16px" }}>
         <div className="tv-scanline" />
         <div style={{ position:"absolute", top:0, left:0, right:0, height:"35%", background:"linear-gradient(180deg,rgba(255,255,255,0.03),transparent)", pointerEvents:"none", zIndex:5 }} />
 
         {tvOn ? (
-          <div className={flipping ? "channel-flip" : ""} style={{ padding:"14px 16px" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:10 }}>
-              <div style={{ fontSize:40, lineHeight:1, filter:"drop-shadow(0 0 10px rgba(255,100,50,.5))" }}>{current.icon}</div>
-              <div style={{ flex:1 }}>
-                <div className="mono" style={{ fontSize:8, color:"#ff6060", letterSpacing:3, marginBottom:4 }}>▶ ON THE TV</div>
-                <div style={{ fontSize:18, color:txt, fontWeight:700, lineHeight:1.2 }}>
-                  {isCustom && customText ? customText : current.label}
-                </div>
-                {!isCustom && current.detail && <div style={{ fontSize:11, color:txt2, marginTop:4 }}>{current.detail}</div>}
-              </div>
-              {saving && <Spinner />}
-            </div>
+          <div style={{ position:"relative", zIndex:6 }}>
+            <div className="mono" style={{ fontSize:8, color:"#ff6060", letterSpacing:3, marginBottom:8 }}>▶ ON THE TV</div>
 
-            {isHost && !showPicker && (
-              <button onClick={()=>setShowPicker(true)} style={{ width:"100%", padding:"7px", background:"rgba(255,32,32,0.1)", border:"1px dashed rgba(255,80,80,0.35)", borderRadius:6, color:"#ff9090", fontSize:10, letterSpacing:2, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", fontWeight:500, cursor:"pointer" }}>
-                ✏️ Change What's On
-              </button>
-            )}
-            {!isHost && <div className="mono" style={{ textAlign:"center", fontSize:8, color:"#333", letterSpacing:2 }}>JOHN OR MELISSA CAN CHANGE THIS</div>}
-
-            {showPicker && isHost && (
-              <div style={{ marginTop:10 }}>
-                <div className="mono" style={{ fontSize:8, color:"#ff6060", letterSpacing:2, marginBottom:8 }}>WHAT'S ON?</div>
-                <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                  {TV_PRESETS.map((p, i) => (
-                    <button key={i} onClick={()=>pick(i)} style={{ display:"flex", alignItems:"center", gap:10, background:selected===i?"rgba(255,32,32,0.18)":"rgba(255,255,255,0.04)", border:`1px solid ${selected===i?"rgba(255,80,80,0.4)":"rgba(255,255,255,0.08)"}`, borderRadius:7, padding:"8px 12px", color:selected===i?txt:txt2, fontSize:12, fontFamily:"'Oswald',sans-serif", fontWeight:selected===i?600:400, cursor:"pointer", textAlign:"left" }}>
-                      <span style={{ fontSize:18, minWidth:24 }}>{p.icon}</span>
-                      <div>
-                        <div>{p.label}</div>
-                        {p.detail && <div style={{ fontSize:10, color:txt3, marginTop:1 }}>{p.detail}</div>}
-                      </div>
-                    </button>
-                  ))}
+            {!editing ? (
+              <div>
+                <div style={{ fontSize:20, color:txt, fontWeight:700, lineHeight:1.2, marginBottom:10 }}>
+                  {whatsOn || "Nothing on"}
                 </div>
-                {isCustom && (
-                  <div style={{ marginTop:8 }}>
-                    <input value={customText} onChange={e=>setCustomText(e.target.value)} placeholder="e.g. 🎬 Top Gun" style={{ width:"100%", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,80,80,0.35)", borderRadius:5, padding:"8px 10px", color:txt, fontSize:12, fontFamily:"'Oswald',sans-serif", outline:"none", marginBottom:8 }} />
-                    <button onClick={saveCustom} style={{ width:"100%", padding:"8px", background:"rgba(255,32,32,0.15)", border:"1px solid rgba(255,80,80,0.45)", borderRadius:6, color:txt, fontSize:11, letterSpacing:2, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", fontWeight:600, cursor:"pointer" }}>Set It</button>
-                  </div>
+                {isHost ? (
+                  <button onClick={()=>setEditing(true)} style={{ width:"100%", padding:"7px", background:"rgba(255,32,32,0.1)", border:"1px dashed rgba(255,80,80,0.35)", borderRadius:6, color:"#ff9090", fontSize:10, letterSpacing:2, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", fontWeight:500, cursor:"pointer" }}>
+                    ✏️ Edit
+                  </button>
+                ) : (
+                  <div className="mono" style={{ textAlign:"center", fontSize:8, color:"#333", letterSpacing:2 }}>JOHN OR MELISSA CAN CHANGE THIS</div>
                 )}
-                <button onClick={()=>setShowPicker(false)} style={{ width:"100%", marginTop:6, padding:"7px", background:"none", border:"none", color:dim, fontSize:10, letterSpacing:2, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", cursor:"pointer" }}>▲ Cancel</button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  autoFocus
+                  value={draft}
+                  onChange={e=>setDraft(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&save()}
+                  placeholder="e.g. Braves Game · ESPN"
+                  style={{ width:"100%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,80,80,0.4)", borderRadius:6, padding:"9px 11px", color:txt, fontSize:14, fontFamily:"'Oswald',sans-serif", outline:"none", marginBottom:8, letterSpacing:.3 }}
+                />
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={save} disabled={saving} style={{ flex:1, padding:"8px", background:"rgba(255,32,32,0.18)", border:"1px solid rgba(255,80,80,0.5)", borderRadius:6, color:txt, fontSize:11, letterSpacing:2, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", fontWeight:700, cursor:"pointer" }}>
+                    {saving ? "..." : "Save"}
+                  </button>
+                  <button onClick={()=>setEditing(false)} style={{ flex:1, padding:"8px", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:6, color:txt3, fontSize:11, letterSpacing:2, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", fontWeight:500, cursor:"pointer" }}>
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>
         ) : (
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:100 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:60 }}>
             <span className="mono" style={{ fontSize:10, color:"#333", letterSpacing:4 }}>NO SIGNAL</span>
           </div>
         )}
@@ -651,6 +609,9 @@ export default function App() {
             </div>
           )}
 
+          {/* DARTS */}
+          {activeTab==="🎯" && <Darts />}
+
           {/* BOARD */}
           {activeTab==="Board" && (
             <div>
@@ -688,6 +649,10 @@ export default function App() {
           Members Only · All Roads Lead to Happy Hour
         </div>
       </div>
+    </>
+  );
+}
+
     </>
   );
 }
