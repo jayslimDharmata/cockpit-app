@@ -18,8 +18,8 @@ const HOSTS = ["John","Melissa"];
 
 const AVATARS = {
   "John":"👨‍🍳","Melissa":"👩‍🍳","The Mayor":"🎩",
-  "Michele":"💃","Vice":"🕶️","April":"🌸",
-  "Rashawn":"🔥","Tess":"⭐","Garrett":"🤙","Lindsey":"🦋",
+  "Michele":"🕵️","Vice":"🕶️","April":"🎃",
+  "Rashawn":"⚾","Tess":"⭐","Garrett":"👮","Lindsey":"🧮",
 };
 
 const CREW_NAMES = ["John","Melissa","The Mayor","Michele","Vice","April","Rashawn","Tess","Garrett","Lindsey"];
