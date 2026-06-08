@@ -40,7 +40,7 @@ const BADGES = [
   { icon:"🔥", label:"On Fire",    desc:"5 visits in a week",   earned:false },
 ];
 
-const tabs = ["Status","Crew","Menu","Board","Darts"];
+const tabs = ["Status","Crew","Menu","Board","Darts","Reviews"];
 
 /* ─── THEME ─────────────────────────────────────────── */
 const bg      = "#1c1c1e";
@@ -412,6 +412,196 @@ function WalkInModal({ onClose, onAdd }) {
   );
 }
 
+/* ─── REVIEWS TAB ────────────────────────────────────── */
+function Stars({ count, size=18, interactive=false, onSelect }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div style={{ display:"flex", gap:2 }}>
+      {[1,2,3,4,5].map(i => (
+        <span key={i}
+          onClick={()=>interactive&&onSelect&&onSelect(i)}
+          onMouseEnter={()=>interactive&&setHover(i)}
+          onMouseLeave={()=>interactive&&setHover(0)}
+          style={{
+            fontSize:size, cursor:interactive?"pointer":"default",
+            color:(hover||count)>=i?"#fbbc04":"#444",
+            transition:"color .1s",
+            lineHeight:1,
+          }}>★</span>
+      ))}
+    </div>
+  );
+}
+
+function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
+  const [stars, setStars]   = useState(0);
+  const [text, setText]     = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const avg = reviews.length
+    ? (reviews.reduce((s,r) => s + Number(r.stars), 0) / reviews.length).toFixed(1)
+    : null;
+
+  const totalByStars = [5,4,3,2,1].map(s => ({
+    s,
+    count: reviews.filter(r=>Number(r.stars)===s).length,
+    pct: reviews.length ? Math.round((reviews.filter(r=>Number(r.stars)===s).length/reviews.length)*100) : 0,
+  }));
+
+  const submit = async () => {
+    if (!stars || !text.trim()) return;
+    setSaving(true);
+    await onSubmit(stars, text.trim());
+    setSaving(false);
+    setStars(0); setText(""); setShowForm(false);
+  };
+
+  const handleDelete = async (i) => {
+    setDeleting(i);
+    await onDelete(i);
+    setDeleting(null);
+  };
+
+  const fmtDate = (ts) => {
+    if (!ts) return "";
+    const d = new Date(ts);
+    if (isNaN(d)) return ts;
+    return d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+  };
+
+  return (
+    <div>
+      {/* Google Reviews header */}
+      <div style={{ background:bgCard, borderRadius:12, padding:"18px 16px", marginBottom:16, border:`1px solid ${border}` }}>
+        {/* Business info */}
+        <div style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:16, paddingBottom:16, borderBottom:`1px solid ${border}` }}>
+          <div style={{ fontSize:36 }}>🍺</div>
+          <div>
+            <div style={{ fontSize:17, color:txt, fontWeight:700, lineHeight:1.2 }}>The Cockpit</div>
+            <div style={{ fontSize:11, color:txt3, marginTop:2 }}>Garage Bar · Members Only</div>
+            <div style={{ fontSize:11, color:"#4caf50", marginTop:2, fontWeight:500 }}>
+              {reviews.length > 0
+                ? (reviews.filter(r=>Number(r.stars)>=4).length / reviews.length > 0.7 ? "Usually packed on weekends" : "Mixed reviews")
+                : "Be the first to review"}
+            </div>
+          </div>
+        </div>
+
+        {/* Rating summary */}
+        {avg ? (
+          <div style={{ display:"flex", gap:20, alignItems:"center", marginBottom:16 }}>
+            <div style={{ textAlign:"center" }}>
+              <div style={{ fontSize:52, color:txt, fontWeight:700, lineHeight:1 }}>{avg}</div>
+              <Stars count={Math.round(Number(avg))} size={16} />
+              <div style={{ fontSize:11, color:txt3, marginTop:4 }}>{reviews.length} review{reviews.length!==1?"s":""}</div>
+            </div>
+            <div style={{ flex:1 }}>
+              {totalByStars.map(({s,count,pct})=>(
+                <div key={s} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                  <span style={{ fontSize:11, color:txt3, minWidth:8 }}>{s}</span>
+                  <span style={{ fontSize:11, color:"#fbbc04" }}>★</span>
+                  <div style={{ flex:1, height:6, background:"#333", borderRadius:3, overflow:"hidden" }}>
+                    <div style={{ width:`${pct}%`, height:"100%", background:"#fbbc04", borderRadius:3, transition:"width .4s" }} />
+                  </div>
+                  <span style={{ fontSize:11, color:txt3, minWidth:14, textAlign:"right" }}>{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ textAlign:"center", padding:"12px 0", color:txt3, fontSize:13 }}>No reviews yet — be the first!</div>
+        )}
+
+        {/* Write a review button */}
+        {!showForm && (
+          <button onClick={()=>setShowForm(true)} style={{
+            width:"100%", padding:"11px",
+            background:"rgba(66,133,244,0.15)",
+            border:"1px solid rgba(66,133,244,0.35)",
+            borderRadius:8, color:"#6ab0ff",
+            fontSize:13, letterSpacing:1,
+            fontFamily:"'Oswald',sans-serif", fontWeight:600, cursor:"pointer",
+          }}>✏️ Write a Review</button>
+        )}
+
+        {/* Review form */}
+        {showForm && (
+          <div style={{ marginTop:4 }}>
+            <div style={{ fontSize:13, color:txt2, marginBottom:10, fontWeight:500 }}>Your rating</div>
+            <div style={{ marginBottom:12 }}>
+              <Stars count={stars} size={36} interactive onSelect={setStars} />
+            </div>
+            <textarea
+              value={text}
+              onChange={e=>setText(e.target.value)}
+              placeholder={`Share your experience at The Cockpit, ${myName}...`}
+              rows={4}
+              style={{
+                width:"100%", background:"rgba(255,255,255,0.07)",
+                border:`1px solid rgba(255,255,255,0.15)`, borderRadius:8,
+                padding:"10px 12px", color:txt, fontSize:13,
+                fontFamily:"'Oswald',sans-serif", outline:"none",
+                resize:"none", marginBottom:10, lineHeight:1.5,
+              }}
+            />
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={submit} disabled={saving||!stars||!text.trim()} style={{
+                flex:1, padding:"11px",
+                background:"rgba(66,133,244,0.2)", border:"1px solid rgba(66,133,244,0.4)",
+                borderRadius:7, color:txt,
+                fontSize:12, letterSpacing:1, textTransform:"uppercase",
+                fontFamily:"'Oswald',sans-serif", fontWeight:700, cursor:"pointer",
+                opacity:(!stars||!text.trim())?0.4:1,
+              }}>{saving?"Posting...":"Post Review"}</button>
+              <button onClick={()=>{setShowForm(false);setStars(0);setText("");}} style={{
+                flex:1, padding:"11px",
+                background:"rgba(255,255,255,0.05)", border:`1px solid ${border}`,
+                borderRadius:7, color:txt3,
+                fontSize:12, letterSpacing:1, textTransform:"uppercase",
+                fontFamily:"'Oswald',sans-serif", fontWeight:500, cursor:"pointer",
+              }}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Reviews list */}
+      <Label>All Reviews</Label>
+      {reviews.length === 0 ? (
+        <div style={{ textAlign:"center", padding:"24px", color:dim, fontSize:13 }}>No reviews yet</div>
+      ) : (
+        [...reviews].reverse().map((r,i)=>(
+          <div key={i} style={{ background:bgCard, border:`1px solid ${border}`, borderRadius:12, padding:"14px 15px", marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:8 }}>
+              {/* Avatar */}
+              <div style={{ width:38, height:38, borderRadius:"50%", background:bgCard2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0, border:`1px solid ${border}` }}>
+                {AVATARS[r.name]||"👤"}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+                  <span style={{ fontSize:14, color:txt, fontWeight:700 }}>{r.name}</span>
+                  {(isHost || r.name===myName) && (
+                    <button onClick={()=>handleDelete(reviews.length-1-i)} disabled={deleting===reviews.length-1-i} style={{ background:"none", border:"none", color:dim, fontSize:14, cursor:"pointer", padding:"0 4px", flexShrink:0 }}>
+                      {deleting===reviews.length-1-i?"...":"✕"}
+                    </button>
+                  )}
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:2 }}>
+                  <Stars count={Number(r.stars)} size={13} />
+                  <span style={{ fontSize:11, color:dim }}>· {fmtDate(r.date)}</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize:13, color:txt2, lineHeight:1.6, paddingLeft:48 }}>{r.text}</div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 /* ─── CLAP LOADER ────────────────────────────────────── */
 function ClapLoader() {
   const [phase, setPhase] = useState(0);
@@ -537,6 +727,7 @@ export default function App() {
   const [crew, setCrew]             = useState([]);
   const [tonight, setTonight]       = useState(null);
   const [events, setEvents]         = useState([]);
+  const [reviews, setReviews]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [activeTab, setActiveTab]   = useState("Status");
@@ -553,14 +744,16 @@ export default function App() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [crewRes, tonightRes, eventsRes] = await Promise.all([
+      const [crewRes, tonightRes, eventsRes, reviewsRes] = await Promise.all([
         apiGet("getCrew"),
         apiGet("getTonight"),
         apiGet("getEvents"),
+        apiGet("getReviews"),
       ]);
-      if (crewRes.crew)       setCrew(crewRes.crew);
-      if (tonightRes.tonight) setTonight(tonightRes.tonight);
-      if (eventsRes.events)   setEvents(eventsRes.events);
+      if (crewRes.crew)        setCrew(crewRes.crew);
+      if (tonightRes.tonight)  setTonight(tonightRes.tonight);
+      if (eventsRes.events)    setEvents(eventsRes.events);
+      if (reviewsRes.reviews)  setReviews(reviewsRes.reviews);
       setError(null);
     } catch(e) {
       setError("Couldn't reach The Cockpit. Check your connection.");
@@ -616,6 +809,16 @@ export default function App() {
 
   const deleteEvent = async (index) => {
     await apiPost({ action:"deleteEvent", index });
+    await fetchAll();
+  };
+
+  const submitReview = async (stars, text) => {
+    await apiPost({ action:"addReview", name:myName, stars, text });
+    await fetchAll();
+  };
+
+  const deleteReview = async (index) => {
+    await apiPost({ action:"deleteReview", index });
     await fetchAll();
   };
 
@@ -877,6 +1080,17 @@ export default function App() {
 
           {/* DARTS */}
           {activeTab==="Darts" && <Darts />}
+
+          {/* REVIEWS */}
+          {activeTab==="Reviews" && (
+            <ReviewsTab
+              reviews={reviews}
+              myName={myName}
+              isHost={isHost}
+              onSubmit={submitReview}
+              onDelete={deleteReview}
+            />
+          )}
 
         </div>
 
