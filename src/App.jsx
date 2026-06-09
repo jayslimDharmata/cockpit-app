@@ -18,7 +18,7 @@ const HOSTS = ["John","Melissa"];
 
 const AVATARS = {
   "John":"👨‍🍳","Melissa":"👩‍🍳","The Mayor":"🎩",
-  "Michele":"💃","Vice":"🕶️","April":"🌸",
+  "Michele":"💃","Vice":"🕶️","April":"🎃",
   "Rashawn":"🔥","Tess":"⭐","Garrett":"🤙","Lindsey":"🦋",
 };
 
