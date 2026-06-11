@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Darts from "./Darts";
+import { requestNotificationPermission, onForegroundMessage } from "./firebase";
 
 /* ─── API ───────────────────────────────────────────── */
 const API = "https://script.google.com/macros/s/AKfycbzq-SohecQc4eKbre6TJrW7T50isYP-IrAyMvRZpq5uYyaDPeIxDNivmB5rxY3w74xN/exec";
@@ -729,6 +730,8 @@ export default function App() {
   const [events, setEvents]         = useState([]);
   const [reviews, setReviews]       = useState([]);
   const [loading, setLoading]       = useState(true);
+  const [notifBanner, setNotifBanner] = useState(null);
+  const [notifAsked, setNotifAsked] = useState(()=>localStorage.getItem("cockpit_notif_asked")||false);
   const [error, setError]           = useState(null);
   const [activeTab, setActiveTab]   = useState("Status");
   const [showWalkIn, setShowWalkIn] = useState(false);
@@ -769,6 +772,31 @@ export default function App() {
       return ()=>clearInterval(interval);
     }
   },[myName, fetchAll]);
+
+  // Request notification permission once per device
+  useEffect(() => {
+    if (myName && !notifAsked && "Notification" in window) {
+      // Small delay so it doesn't pop immediately on load
+      const t = setTimeout(async () => {
+        localStorage.setItem("cockpit_notif_asked", "true");
+        setNotifAsked(true);
+        await requestNotificationPermission(myName);
+      }, 3000);
+      return () => clearTimeout(t);
+    }
+  }, [myName, notifAsked]);
+
+  // Show banner for foreground notifications (app is open)
+  useEffect(() => {
+    if (!myName) return;
+    const unsub = onForegroundMessage((payload) => {
+      const title = payload.notification?.title || "The Cockpit";
+      const body  = payload.notification?.body  || "";
+      setNotifBanner({ title, body });
+      setTimeout(() => setNotifBanner(null), 5000);
+    });
+    return unsub;
+  }, [myName]);
 
   /* ── ACTIONS ── */
   const toggleBar = async () => {
@@ -879,6 +907,28 @@ export default function App() {
       )}
 
       <div style={{ fontFamily:"'Oswald',sans-serif", background:bg, minHeight:"100vh", color:txt, maxWidth:430, margin:"0 auto", position:"relative", overflow:"hidden" }}>
+
+        {/* Foreground notification banner */}
+        {notifBanner && (
+          <div onClick={()=>setNotifBanner(null)} style={{
+            position:"fixed", top:16, left:"50%", transform:"translateX(-50%)",
+            width:"calc(100% - 32px)", maxWidth:400,
+            background:"#1e1e22", border:`1px solid rgba(255,80,80,0.4)`,
+            borderRadius:12, padding:"14px 16px",
+            boxShadow:"0 8px 32px rgba(0,0,0,0.6)",
+            zIndex:2000, cursor:"pointer",
+            animation:"fadeUp .3s ease",
+          }}>
+            <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+              <span style={{ fontSize:28 }}>🍺</span>
+              <div>
+                <div style={{ fontSize:14, color:txt, fontWeight:700 }}>{notifBanner.title}</div>
+                {notifBanner.body && <div style={{ fontSize:12, color:txt2, marginTop:2 }}>{notifBanner.body}</div>}
+              </div>
+              <span style={{ marginLeft:"auto", color:dim, fontSize:18 }}>✕</span>
+            </div>
+          </div>
+        )}
 
         {/* Subtle red glow top */}
         <div style={{ position:"fixed", top:-120, left:"50%", transform:"translateX(-50%)", width:400, height:260, borderRadius:"50%", pointerEvents:"none", zIndex:0, background:isOpen?"radial-gradient(ellipse,rgba(255,30,30,0.1) 0%,transparent 70%)":"none", transition:"background 1.2s ease" }} />
