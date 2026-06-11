@@ -18,7 +18,7 @@ const HOSTS = ["John","Melissa"];
 
 const AVATARS = {
   "John":"👨‍🍳","Melissa":"👩‍🍳","The Mayor":"🎩",
-  "Michele":"💃","Vice":"🕶️","April":"🎃",
+  "Michele":"💃","Vice":"🕶️","April":"🌸",
   "Rashawn":"🔥","Tess":"⭐","Garrett":"🤙","Lindsey":"🦋",
 };
 
@@ -822,7 +822,17 @@ export default function App() {
     await fetchAll();
   };
 
-  /* ── DERIVED ── */
+  /* ── CLEAN OPEN TIME ── */
+  const cleanTime = (t) => {
+    if (!t) return "";
+    const s = String(t);
+    // If it looks like a proper time (e.g. "8:42 PM") just return it
+    if (/^\d{1,2}:\d{2}\s?(AM|PM)$/i.test(s.trim())) return s.trim();
+    // If it's a date string or ISO, try to extract just the time
+    const d = new Date(s);
+    if (!isNaN(d)) return d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
+    return "";
+  };
   const isOpen         = tonight?.isOpen===true||tonight?.isOpen==="TRUE";
   const walkins        = tonight?.walkins||[];
   const checkedInCrew  = crew.filter(m=>m.checkedIn===true||m.checkedIn==="TRUE");
@@ -889,7 +899,7 @@ export default function App() {
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:14 }}>
             <div className={isOpen?"live-dot":""} style={{ width:8, height:8, borderRadius:"50%", background:isOpen?"#ff3333":"#3a1010", transition:"background .6s" }} />
             <span style={{ fontSize:12, letterSpacing:3, textTransform:"uppercase", color:isOpen?"#ff6060":dim, fontWeight:500 }}>
-              {isOpen?`Open Since ${tonight?.openTime||""}`: "Closed"}
+              {isOpen?`Open Since ${cleanTime(tonight?.openTime)}`: "Closed"}
             </span>
             {isOpen && <span style={{ background:"rgba(255,50,50,0.15)", border:"1px solid rgba(255,80,80,0.3)", borderRadius:5, padding:"3px 10px", fontSize:11, letterSpacing:1, color:"#ff8080" }}>{checkedInTotal} inside</span>}
           </div>
