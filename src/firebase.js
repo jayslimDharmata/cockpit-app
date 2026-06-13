@@ -12,35 +12,91 @@ const firebaseConfig = {
 
 const VAPID_KEY = "BB2YUOfUmT2DUjF59RzfFAud_ufc-LEAuYXsC_XlfGBZyrgCfr1nH2YRQdzygQJ8wV3YRig_T9K0THEvWfGJZP0";
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+let app, messaging;
+
+try {
+  app = initializeApp(firebaseConfig);
+  messaging = getMessaging(app);
+  console.log("Cockpit Firebase: initialized");
+} catch(err) {
+  console.error("Cockpit Firebase: init failed", err);
+}
+
+async function getActiveServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    throw new Error("Service workers not supported");
+  }
+
+  // Register the service worker
+  const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+  console.log("Cockpit Firebase: service worker registered", registration.scope);
+
+  // Wait for it to be active
+  if (registration.active) {
+    console.log("Cockpit Firebase: service worker already active");
+    return registration;
+  }
+
+  // Wait for activation
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Service worker activation timeout")), 10000);
+    const sw = registration.installing || registration.waiting;
+    if (!sw) {
+      clearTimeout(timeout);
+      resolve(registration);
+      return;
+    }
+    sw.addEventListener("statechange", (e) => {
+      if (e.target.state === "activated") {
+        clearTimeout(timeout);
+        console.log("Cockpit Firebase: service worker activated");
+        resolve(registration);
+      }
+    });
+  });
+}
 
 export async function requestNotificationPermission(userName) {
   try {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      console.log("Notification permission denied");
+    if (!messaging) {
+      console.error("Cockpit Firebase: messaging not initialized");
       return null;
     }
 
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    const permission = await Notification.requestPermission();
+    console.log("Cockpit Firebase: permission =", permission);
+    if (permission !== "granted") return null;
+
+    // Get active service worker first
+    const registration = await getActiveServiceWorker();
+
+    console.log("Cockpit Firebase: getting FCM token...");
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: registration,
+    });
+
+    console.log("Cockpit Firebase: token obtained", token ? "YES" : "NO");
+
     if (token) {
-      // Save token to Google Sheet so server can send notifications
-      await fetch(
+      const res = await fetch(
         "https://script.google.com/macros/s/AKfycbzq-SohecQc4eKbre6TJrW7T50isYP-IrAyMvRZpq5uYyaDPeIxDNivmB5rxY3w74xN/exec",
         {
           method: "POST",
           body: JSON.stringify({ action: "saveToken", name: userName, token }),
         }
       );
+      const data = await res.json();
+      console.log("Cockpit Firebase: token saved to Sheet", data);
       return token;
     }
-  } catch (err) {
-    console.error("Notification setup error:", err);
+  } catch(err) {
+    console.error("Cockpit Firebase: error", err);
   }
   return null;
 }
 
 export function onForegroundMessage(callback) {
+  if (!messaging) return () => {};
   return onMessage(messaging, callback);
 }
