@@ -8,7 +8,7 @@ const firebaseConfig = {
   projectId: "the-cockpit-21949",
   storageBucket: "the-cockpit-21949.firebasestorage.app",
   messagingSenderId: "573671862515",
-  appId: "1:573671862515:web:8c7b702e457bd8cb5a4786",
+  appId: "1:573671862515:web:e48adb01db95d1225a4786",
 };
 
 const VAPID_KEY = "BB2YUOfUmT2DUjF59RzfFAud_ufc-LEAuYXsC_XlfGBZyrgCfr1nH2YRQdzygQJ8wV3YRig_T9K0THEvWfGJZP0";
