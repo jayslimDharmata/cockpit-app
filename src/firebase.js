@@ -1,74 +1,87 @@
-// Direct Web Push implementation - bypasses Firebase SDK token registration issues
+import { initializeApp } from "firebase/app";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
-const VAPID_PUBLIC_KEY = "BB2YUOfUmT2DUjF59RzfFAud_ufc-LEAuYXsC_XlfGBZyrgCfr1nH2YRQdzygQJ8wV3YRig_T9K0THEvWfGJZP0";
+const firebaseConfig = {
+  apiKey: "AIzaSyBHhUh_qPavlGYXmEmR2NS0iRdqpEDkQHA",
+  authDomain: "the-cockpit-21949.firebaseapp.com",
+  projectId: "the-cockpit-21949",
+  storageBucket: "the-cockpit-21949.firebasestorage.app",
+  messagingSenderId: "573671862515",
+  appId: "1:573671862515:web:8c7b702e457bd8cb5a4786",
+};
+
+const VAPID_KEY = "BB2YUOfUmT2DUjF59RzfFAud_ufc-LEAuYXsC_XlfGBZyrgCfr1nH2YRQdzygQJ8wV3YRig_T9K0THEvWfGJZP0";
 const API_URL = "https://script.google.com/macros/s/AKfycbzq-SohecQc4eKbre6TJrW7T50isYP-IrAyMvRZpq5uYyaDPeIxDNivmB5rxY3w74xN/exec";
 
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+let app, messaging;
+
+try {
+  app = initializeApp(firebaseConfig);
+  messaging = getMessaging(app);
+  console.log("Cockpit Firebase: initialized");
+} catch(err) {
+  console.error("Cockpit Firebase: init failed", err);
 }
 
 export async function requestNotificationPermission(userName) {
   try {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      console.log("Cockpit: Push notifications not supported on this browser");
+    if (!messaging) {
+      console.error("Cockpit Firebase: messaging not initialized");
       return null;
     }
 
-    // Request permission
     const permission = await Notification.requestPermission();
-    console.log("Cockpit: notification permission =", permission);
+    console.log("Cockpit Firebase: permission =", permission);
     if (permission !== "granted") return null;
 
-    // Register service worker
-    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-    console.log("Cockpit: service worker registered");
+    // Register service worker first and wait for it to be ready
+    let swRegistration;
+    try {
+      swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      // Wait for the service worker to be active
+      await new Promise((resolve) => {
+        if (swRegistration.active) { resolve(); return; }
+        const sw = swRegistration.installing || swRegistration.waiting;
+        if (sw) {
+          sw.addEventListener("statechange", () => {
+            if (sw.state === "activated") resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+      console.log("Cockpit Firebase: service worker ready");
+    } catch(swErr) {
+      console.error("Cockpit Firebase: service worker error", swErr);
+      return null;
+    }
 
-    // Wait for it to be ready
-    await navigator.serviceWorker.ready;
-    console.log("Cockpit: service worker ready");
-
-    // Subscribe to push using Web Push API directly
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    // Get FCM token using the Firebase SDK
+    console.log("Cockpit Firebase: getting token...");
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swRegistration,
     });
 
-    console.log("Cockpit: push subscription obtained");
+    console.log("Cockpit Firebase: token =", token ? token.substring(0,20)+"..." : "NONE");
 
-    // Save subscription to Google Sheet
-    const res = await fetch(API_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        action: "saveToken",
-        name: userName,
-        token: JSON.stringify(subscription),
-      }),
-    });
-    const data = await res.json();
-    console.log("Cockpit: subscription saved to Sheet", data);
-    return subscription;
-
+    if (token) {
+      // Save plain FCM token (not Web Push subscription JSON)
+      const res = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "saveToken", name: userName, token }),
+      });
+      const data = await res.json();
+      console.log("Cockpit Firebase: token saved", data);
+      return token;
+    }
   } catch(err) {
-    console.error("Cockpit: push setup error", err);
+    console.error("Cockpit Firebase: error", err);
   }
   return null;
 }
 
 export function onForegroundMessage(callback) {
-  // Listen for messages from service worker
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.addEventListener("message", (event) => {
-      if (event.data && event.data.type === "PUSH_RECEIVED") {
-        callback(event.data.payload);
-      }
-    });
-  }
-  return () => {};
+  if (!messaging) return () => {};
+  return onMessage(messaging, callback);
 }
