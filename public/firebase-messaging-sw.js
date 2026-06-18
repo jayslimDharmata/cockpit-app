@@ -1,51 +1,34 @@
-// Service worker for Web Push notifications
-// Place this file in the PUBLIC folder
+importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
 
-self.addEventListener("push", (event) => {
-  console.log("Cockpit SW: push received", event);
+firebase.initializeApp({
+  apiKey: "AIzaSyBHhUh_qPavlGYXmEmR2NS0iRdqpEDkQHA",
+  authDomain: "the-cockpit-21949.firebaseapp.com",
+  projectId: "the-cockpit-21949",
+  storageBucket: "the-cockpit-21949.firebasestorage.app",
+  messagingSenderId: "573671862515",
+  appId: "1:573671862515:web:8c7b702e457bd8cb5a4786",
+});
 
-  let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch(e) {
-    data = { title: "The Cockpit", body: event.data ? event.data.text() : "" };
-  }
+const messaging = firebase.messaging();
 
-  const title = data.title || "The Cockpit 🍺";
-  const options = {
-    body: data.body || "Something's happening at the bar",
+messaging.onBackgroundMessage((payload) => {
+  console.log("Background message received:", payload);
+  const { title, body } = payload.notification || {};
+  self.registration.showNotification(title || "The Cockpit", {
+    body: body || "Something's happening at the bar",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
     vibrate: [200, 100, 200],
-    data: data,
-    requireInteraction: false,
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
+  });
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+    clients.matchAll({ type:"window", includeUncontrolled:true }).then((clientList) => {
       if (clientList.length > 0) return clientList[0].focus();
       return clients.openWindow("/");
     })
   );
-});
-
-// Tell the app when a push is received while it's open
-self.addEventListener("push", (event) => {
-  if (self.clients) {
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        client.postMessage({
-          type: "PUSH_RECEIVED",
-          payload: event.data ? event.data.json() : {},
-        });
-      });
-    });
-  }
 });
