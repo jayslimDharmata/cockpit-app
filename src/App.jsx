@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Darts from "./Darts";
-import { requestNotificationPermission, onForegroundMessage } from "./firebase";
+import { requestNotificationPermission, onForegroundMessage } from "./onesignal";
 
 /* ─── API ───────────────────────────────────────────── */
 const API = "https://script.google.com/macros/s/AKfycbzq-SohecQc4eKbre6TJrW7T50isYP-IrAyMvRZpq5uYyaDPeIxDNivmB5rxY3w74xN/exec";
@@ -776,11 +776,16 @@ export default function App() {
   // Request notification permission once per device
   useEffect(() => {
     if (myName && !notifAsked && "Notification" in window) {
-      // Small delay so it doesn't pop immediately on load
       const t = setTimeout(async () => {
-        localStorage.setItem("cockpit_notif_asked", "true");
-        setNotifAsked(true);
-        await requestNotificationPermission(myName);
+        try {
+          localStorage.setItem("cockpit_notif_asked", "true");
+          setNotifAsked(true);
+          console.log("Cockpit: requesting notification permission for", myName);
+          const token = await requestNotificationPermission(myName);
+          console.log("Cockpit: got token", token ? "YES" : "NO", token);
+        } catch(err) {
+          console.error("Cockpit: notification setup failed", err);
+        }
       }, 3000);
       return () => clearTimeout(t);
     }
