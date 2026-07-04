@@ -52,8 +52,8 @@ const red     = "#ff4444";
 const redDim  = "#cc2222";
 const txt     = "#ffffff";
 const txt2    = "#cccccc";
-const txt3    = "#999999";
-const dim     = "#666666";
+const txt3    = "#aaaaaa";
+const dim     = "#777777";
 
 /* ─── STYLES ─────────────────────────────────────────── */
 const css = `
@@ -93,7 +93,8 @@ const css = `
     50%{ box-shadow:0 0 0 12px rgba(255,68,68,0); }
   }
 
-  html,body{ margin:0; padding:0; background:${bg}; }
+  html,body{ margin:0; padding:0; background:${bg}; font-size:16px; }
+  * { -webkit-text-size-adjust: 100%; }
   .neon-title{ font-family:'Permanent Marker',cursive!important; animation:neonFlicker 5s infinite; color:#fff; }
   .dark-title{ font-family:'Permanent Marker',cursive!important; color:#5a2020; }
   .tab-content{ animation:fadeUp .22s ease forwards; }
@@ -110,7 +111,7 @@ const css = `
 function Label({ children, style={} }) {
   return (
     <div style={{
-      fontSize:11, letterSpacing:3, textTransform:"uppercase",
+      fontSize:13, letterSpacing:3, textTransform:"uppercase",
       color:red, marginBottom:12,
       borderLeft:"3px solid "+red, paddingLeft:9,
       fontFamily:"'Oswald',sans-serif", fontWeight:600, ...style,
@@ -241,7 +242,7 @@ function TVWidget({ isHost, whatsOn, onSetWhatsOn }) {
 /* ─── EVENTS WIDGET ──────────────────────────────────── */
 function EventsWidget({ events, isHost, onAdd, onDelete }) {
   const [showForm, setShowForm] = useState(false);
-  const [draft, setDraft]       = useState({ date:"", title:"", note:"" });
+  const [draft, setDraft]       = useState({ date:"", title:"", note:"", time:"" });
   const [saving, setSaving]     = useState(false);
   const [deleting, setDeleting] = useState(null);
 
@@ -249,7 +250,7 @@ function EventsWidget({ events, isHost, onAdd, onDelete }) {
     if (!dateStr) return "";
     const d = new Date(dateStr + "T12:00:00");
     if (isNaN(d)) return dateStr;
-    return d.toLocaleDateString("en-US", { weekday:"short", month:"short", day:"numeric" });
+    return d.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
   };
 
   const getDay = (dateStr) => {
@@ -272,9 +273,9 @@ function EventsWidget({ events, isHost, onAdd, onDelete }) {
   const submit = async () => {
     if (!draft.date || !draft.title.trim()) return;
     setSaving(true);
-    await onAdd({ date:draft.date, title:draft.title.trim(), note:draft.note.trim() });
+    await onAdd({ date:draft.date, title:draft.title.trim(), note:draft.note.trim(), time:draft.time.trim() });
     setSaving(false);
-    setDraft({ date:"", title:"", note:"" });
+    setDraft({ date:"", title:"", note:"", time:"" });
     setShowForm(false);
   };
 
@@ -321,6 +322,10 @@ function EventsWidget({ events, isHost, onAdd, onDelete }) {
           <input value={draft.note} onChange={e=>setDraft(d=>({...d,note:e.target.value}))}
             placeholder="e.g. Main card starts at 10"
             style={inputStyle} />
+          <div style={{ fontSize:10, color:txt3, letterSpacing:1, marginBottom:5 }}>TIME ET (optional)</div>
+          <input value={draft.time} onChange={e=>setDraft(d=>({...d,time:e.target.value}))}
+            placeholder="e.g. 8:00 PM"
+            style={inputStyle} />
           <div style={{ display:"flex", gap:8, marginTop:4 }}>
             <button onClick={submit} disabled={saving||!draft.date||!draft.title.trim()} style={{
               flex:1, padding:"11px",
@@ -362,9 +367,9 @@ function EventsWidget({ events, isHost, onAdd, onDelete }) {
               </div>
               {/* Info */}
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:15, color:txt, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{e.title}</div>
-                {e.note && <div style={{ fontSize:11, color:txt3, marginTop:2 }}>{e.note}</div>}
-                <div style={{ fontSize:10, color:dim, marginTop:2, letterSpacing:.5 }}>{fmt(e.date)}</div>
+                <div style={{ fontSize:17, color:txt, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{e.title}</div>
+                {e.note && <div style={{ fontSize:14, color:txt3, marginTop:3 }}>{e.note}</div>}
+                <div style={{ fontSize:13, color:dim, marginTop:3, letterSpacing:.3 }}>{fmt(e.date)}{e.time ? " · " + e.time + " ET" : ""}</div>
               </div>
               {/* Next up badge or delete */}
               <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
@@ -595,7 +600,7 @@ function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
                 </div>
               </div>
             </div>
-            <div style={{ fontSize:13, color:txt2, lineHeight:1.6, paddingLeft:48 }}>{r.text}</div>
+            <div style={{ fontSize:15, color:txt2, lineHeight:1.6, paddingLeft:48 }}>{r.text}</div>
           </div>
         ))
       )}
@@ -836,7 +841,7 @@ export default function App() {
   };
 
   const addEvent = async (event) => {
-    await apiPost({ action:"addEvent", date:event.date, title:event.title, note:event.note });
+    await apiPost({ action:"addEvent", date:event.date, title:event.title, note:event.note, time:event.time });
     await fetchAll();
   };
 
@@ -897,7 +902,7 @@ export default function App() {
       {showSwitch && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
           <div style={{ background:"#242428", border:`1px solid rgba(255,80,80,0.3)`, borderRadius:12, padding:24, width:"100%", maxWidth:360 }}>
-            <div style={{ fontSize:16, color:txt, fontWeight:700, marginBottom:16, letterSpacing:1 }}>Switch User</div>
+            <div style={{ fontSize:18, color:txt, fontWeight:700, marginBottom:16, letterSpacing:1 }}>Switch User</div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
               {CREW_NAMES.map(name=>(
                 <button key={name} onClick={()=>{ handleSelectName(name); setShowSwitch(false); }} style={{ display:"flex", alignItems:"center", gap:8, background:myName===name?"rgba(255,50,50,0.18)":bgCard, border:`1px solid ${myName===name?"rgba(255,80,80,0.4)":border}`, borderRadius:8, padding:"10px 12px", color:txt, fontFamily:"'Oswald',sans-serif", fontWeight:600, fontSize:13, cursor:"pointer" }}>
@@ -953,7 +958,7 @@ export default function App() {
 
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:14 }}>
             <div className={isOpen?"live-dot":""} style={{ width:8, height:8, borderRadius:"50%", background:isOpen?"#ff3333":"#3a1010", transition:"background .6s" }} />
-            <span style={{ fontSize:12, letterSpacing:3, textTransform:"uppercase", color:isOpen?"#ff6060":dim, fontWeight:500 }}>
+            <span style={{ fontSize:16, letterSpacing:3, textTransform:"uppercase", color:isOpen?"#ff6060":dim, fontWeight:500 }}>
               {isOpen?`Open Since ${cleanTime(tonight?.openTime)}`: "Closed"}
             </span>
             {isOpen && <span style={{ background:"rgba(255,50,50,0.15)", border:"1px solid rgba(255,80,80,0.3)", borderRadius:5, padding:"3px 10px", fontSize:11, letterSpacing:1, color:"#ff8080" }}>{checkedInTotal} inside</span>}
@@ -992,7 +997,7 @@ export default function App() {
                 background:myCheckedIn?"rgba(255,50,50,0.12)":bgCard,
                 border:`1px solid ${myCheckedIn?"rgba(255,80,80,0.4)":border}`,
                 borderRadius:10, color:myCheckedIn?txt:txt3,
-                fontSize:14, letterSpacing:3, textTransform:"uppercase",
+                fontSize:16, letterSpacing:3, textTransform:"uppercase",
                 fontFamily:"'Oswald',sans-serif", fontWeight:700,
                 boxShadow:myCheckedIn?"0 0 20px rgba(255,50,50,0.12)":"none",
                 transition:"all .2s", cursor:"pointer",
@@ -1033,7 +1038,7 @@ export default function App() {
                       <span style={{ fontSize:28 }}>{AVATARS[m.name]||"👤"}</span>
                       <div style={{ flex:1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3 }}>
-                          <span style={{ fontSize:16, color:txt, fontWeight:700 }}>{m.name}</span>
+                          <span style={{ fontSize:18, color:txt, fontWeight:700 }}>{m.name}</span>
                           <span style={{ fontSize:9, color:red, background:"rgba(255,68,68,0.15)", padding:"2px 7px", borderRadius:3, letterSpacing:1 }}>HOST</span>
                         </div>
                         <div style={{ fontSize:12, color:txt2 }}>🥤 {m.drink}</div>
