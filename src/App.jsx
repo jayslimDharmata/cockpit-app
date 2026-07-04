@@ -41,7 +41,7 @@ const BADGES = [
   { icon:"🔥", label:"On Fire",    desc:"5 visits in a week",   earned:false },
 ];
 
-const tabs = ["Status","Crew","Menu","Board","Darts","Reviews"];
+const tabs = ["Status","Crew","Weather","Board","Darts","Reviews"];
 
 /* ─── THEME ─────────────────────────────────────────── */
 const bg      = "#1c1c1e";
@@ -608,6 +608,200 @@ function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
   );
 }
 
+/* ─── WEATHER TAB ────────────────────────────────────── */
+const WEATHER_EMOJIS = {
+  "Sunny": "☀️", "Clear": "🌙", "Mostly Clear": "🌙",
+  "Partly Cloudy": "⛅", "Mostly Cloudy": "🌥️", "Cloudy": "☁️",
+  "Overcast": "☁️", "Rain": "🌧️", "Showers": "🌦️",
+  "Thunderstorms": "⛈️", "Thunderstorm": "⛈️", "Fog": "🌫️",
+  "Windy": "💨", "Breezy": "🍃", "Hot": "🥵", "Humid": "💧",
+};
+
+function getWeatherEmoji(shortForecast) {
+  if (!shortForecast) return "🌡️";
+  for (const [key, emoji] of Object.entries(WEATHER_EMOJIS)) {
+    if (shortForecast.toLowerCase().includes(key.toLowerCase())) return emoji;
+  }
+  if (shortForecast.toLowerCase().includes("rain") || shortForecast.toLowerCase().includes("shower")) return "🌧️";
+  if (shortForecast.toLowerCase().includes("thunder")) return "⛈️";
+  if (shortForecast.toLowerCase().includes("cloud")) return "☁️";
+  if (shortForecast.toLowerCase().includes("sun") || shortForecast.toLowerCase().includes("clear")) return "☀️";
+  return "🌡️";
+}
+
+function getVibe(hours) {
+  if (!hours || hours.length === 0) return null;
+  const eveningHours = hours.filter(h => {
+    const hour = new Date(h.startTime).getHours();
+    return hour >= 17 && hour <= 23;
+  });
+  if (eveningHours.length === 0) return null;
+  const avgTemp = Math.round(eveningHours.reduce((s,h) => s + h.temperature, 0) / eveningHours.length);
+  const maxRain = Math.max(...eveningHours.map(h => h.probabilityOfPrecipitation?.value || 0));
+  const hasThunder = eveningHours.some(h => h.shortForecast?.toLowerCase().includes("thunder"));
+
+  if (hasThunder) return { text:"Lightning risk tonight ⛈️ — keep an eye on it", color:"#ff9500" };
+  if (maxRain > 60) return { text:"Good chance of rain tonight 🌧️ — garage only", color:"#5b9bd5" };
+  if (maxRain > 30) return { text:"Some rain possible tonight 🌦️", color:"#7ab8c8" };
+  if (avgTemp > 88) return { text:"Hot one tonight 🥵 — crank the AC", color:"#ff6060" };
+  if (avgTemp > 80) return { text:"Warm but manageable tonight 🌴", color:"#f0c040" };
+  return { text:"Good night for the garage 🍺", color:"#4caf50" };
+}
+
+function WeatherTab() {
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        // Step 1: Get NWS grid point for Wellington FL
+        const pointRes = await fetch(
+          "https://api.weather.gov/points/26.6549,-80.2471",
+          { headers: { "User-Agent": "TheCockpitApp/1.0" } }
+        );
+        const pointData = await pointRes.json();
+        const hourlyUrl = pointData.properties.forecastHourly;
+
+        // Step 2: Get hourly forecast
+        const forecastRes = await fetch(hourlyUrl, { headers: { "User-Agent": "TheCockpitApp/1.0" } });
+        const forecastData = await forecastRes.json();
+        const periods = forecastData.properties.periods;
+
+        // Filter to current + evening hours (4pm - midnight)
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setHours(23, 59, 0, 0);
+
+        const relevant = periods.filter(p => {
+          const t = new Date(p.startTime);
+          const hour = t.getHours();
+          return t >= now && t <= midnight && hour >= 15;
+        }).slice(0, 10);
+
+        // Current conditions = first period
+        const current = periods[0];
+
+        setWeather({ current, hours: relevant, allHours: periods.slice(0, 24) });
+      } catch(e) {
+        setError("Couldn't load weather. Try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWeather();
+  }, []);
+
+  if (loading) return (
+    <div style={{ textAlign:"center", padding:"40px 0", color:dim }}>
+      <div style={{ fontSize:32, marginBottom:12 }}>🌤️</div>
+      <div style={{ fontSize:14, letterSpacing:1 }}>Loading Wellington weather...</div>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ textAlign:"center", padding:"40px 0", color:dim }}>
+      <div style={{ fontSize:32, marginBottom:12 }}>📡</div>
+      <div style={{ fontSize:14 }}>{error}</div>
+    </div>
+  );
+
+  const vibe = getVibe(weather.allHours);
+  const current = weather.current;
+  const currentEmoji = getWeatherEmoji(current?.shortForecast);
+
+  return (
+    <div>
+      {/* Vibe banner */}
+      {vibe && (
+        <div style={{ padding:"14px 16px", marginBottom:16, borderRadius:10, background:"rgba(255,255,255,0.05)", border:`1px solid ${vibe.color}44`, textAlign:"center" }}>
+          <div style={{ fontSize:16, color:vibe.color, fontWeight:700 }}>{vibe.text}</div>
+        </div>
+      )}
+
+      {/* Current conditions */}
+      <Label>Right Now — Wellington</Label>
+      <Card style={{ marginBottom:16 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+          <div style={{ fontSize:52, lineHeight:1 }}>{currentEmoji}</div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:36, color:txt, fontWeight:700, lineHeight:1 }}>
+              {current?.temperature}°{current?.temperatureUnit}
+            </div>
+            <div style={{ fontSize:16, color:txt2, marginTop:4 }}>{current?.shortForecast}</div>
+            <div style={{ fontSize:14, color:dim, marginTop:2 }}>
+              {current?.windSpeed} {current?.windDirection}
+            </div>
+          </div>
+          <div style={{ textAlign:"right" }}>
+            {(current?.probabilityOfPrecipitation?.value || 0) > 0 && (
+              <div style={{ fontSize:13, color:"#7ab8c8" }}>
+                💧 {current.probabilityOfPrecipitation.value}% rain
+              </div>
+            )}
+            <div style={{ fontSize:13, color:dim, marginTop:4 }}>
+              Humidity: {current?.relativeHumidity?.value || "—"}%
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Evening hourly forecast */}
+      {weather.hours.length > 0 && (
+        <>
+          <Label>Tonight's Forecast</Label>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {weather.hours.map((h, i) => {
+              const hour = new Date(h.startTime);
+              const timeStr = hour.toLocaleTimeString("en-US", {
+                hour:"numeric", minute:"2-digit",
+                timeZone:"America/New_York"
+              });
+              const rain = h.probabilityOfPrecipitation?.value || 0;
+              const emoji = getWeatherEmoji(h.shortForecast);
+              const isNow = i === 0;
+
+              return (
+                <div key={i} style={{
+                  display:"flex", alignItems:"center", gap:12,
+                  padding:"12px 14px", borderRadius:10,
+                  background: isNow ? "rgba(255,68,68,0.1)" : bgCard,
+                  border:`1px solid ${isNow ? "rgba(255,80,80,0.3)" : border}`,
+                }}>
+                  <div style={{ minWidth:60, fontSize:13, color:isNow?red:dim, fontWeight:isNow?700:400 }}>
+                    {timeStr}
+                  </div>
+                  <span style={{ fontSize:22 }}>{emoji}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:14, color:txt }}>{h.shortForecast}</div>
+                    {rain > 0 && (
+                      <div style={{ fontSize:12, color:"#7ab8c8", marginTop:2 }}>💧 {rain}% rain</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize:18, color:txt, fontWeight:700 }}>
+                    {h.temperature}°
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {weather.hours.length === 0 && (
+        <div style={{ textAlign:"center", padding:"20px", color:dim, fontSize:14 }}>
+          No evening forecast available yet — check back after noon.
+        </div>
+      )}
+
+      <div style={{ textAlign:"center", marginTop:16, fontSize:11, color:dim }}>
+        Data from National Weather Service · Wellington, FL
+      </div>
+    </div>
+  );
+}
+
 /* ─── CLAP LOADER ────────────────────────────────────── */
 function ClapLoader() {
   const [phase, setPhase] = useState(0);
@@ -1091,31 +1285,8 @@ export default function App() {
             </div>
           )}
 
-          {/* MENU */}
-          {activeTab==="Menu" && (
-            <div>
-              <Label>The Usual Suspects</Label>
-              {DRINKS.map((d,i)=>(
-                <div key={i} style={{ padding:"16px", marginBottom:12, background:bgCard, border:`1px solid ${border}`, borderLeft:`4px solid ${d.color}`, borderRadius:10 }}>
-                  <div style={{ display:"flex", gap:12 }}>
-                    <span style={{ fontSize:32, lineHeight:1 }}>{d.emoji}</span>
-                    <div style={{ flex:1 }}>
-                      <div style={{ display:"flex", alignItems:"baseline", gap:8, flexWrap:"wrap", marginBottom:5 }}>
-                        <span style={{ fontSize:17, color:txt, fontWeight:700 }}>{d.name}</span>
-                        <span style={{ fontSize:11, color:d.color, letterSpacing:.5 }}>{d.sub}</span>
-                      </div>
-                      <div style={{ fontSize:13, color:txt2, lineHeight:1.5 }}>{d.desc}</div>
-                      <div style={{ display:"flex", gap:6, marginTop:10, flexWrap:"wrap" }}>
-                        {d.fans.map(f=>(
-                          <span key={f} style={{ fontSize:12, color:d.color, background:"rgba(255,255,255,0.06)", border:`1px solid ${d.color}44`, borderRadius:12, padding:"3px 11px" }}>{f}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* WEATHER */}
+          {activeTab==="Weather" && <WeatherTab />}
 
           {/* BOARD */}
           {activeTab==="Board" && (
