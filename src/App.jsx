@@ -1054,6 +1054,11 @@ export default function App() {
     await fetchAll();
   };
 
+  const sendCockKnock = async () => {
+    await apiPost({ action:"cockKnock", name:myName });
+    await fetchAll();
+  };
+
   /* ── CLEAN OPEN TIME ── */
   const cleanTime = (t) => {
     if (!t) return "";
@@ -1198,6 +1203,57 @@ export default function App() {
               }}>
                 {actionLoading?"...":myCheckedIn?"You're Inside — Tap to Leave":"Tap to Check In"}
               </button>
+
+              {/* Cock Knock — only show when bar is closed and you're not a host */}
+              {!isOpen && !isHost && (
+                <div style={{ marginTop:10 }}>
+                  <button onClick={sendCockKnock} disabled={actionLoading} style={{
+                    width:"100%", padding:"16px",
+                    background:"rgba(255,149,0,0.1)",
+                    border:"1px solid rgba(255,149,0,0.35)",
+                    borderRadius:10, color:"#ffaa00",
+                    fontSize:15, letterSpacing:2, textTransform:"uppercase",
+                    fontFamily:"'Oswald',sans-serif", fontWeight:700,
+                    cursor:"pointer", transition:"all .2s",
+                  }}>
+                    🚪 Cock Knock
+                  </button>
+                  {(tonight?.knocks || 0) > 0 && (
+                    <div style={{
+                      marginTop:10, padding:"12px 16px",
+                      background:"rgba(255,149,0,0.07)",
+                      border:"1px solid rgba(255,149,0,0.2)",
+                      borderRadius:10, textAlign:"center",
+                    }}>
+                      <div style={{ fontSize:28, marginBottom:4 }}>🚪</div>
+                      <div style={{ fontSize:16, color:"#ffaa00", fontWeight:700 }}>
+                        There are currently {tonight.knocks} Cock Knocker{tonight.knocks === 1 ? "" : "s"}
+                      </div>
+                      <div style={{ fontSize:13, color:dim, marginTop:4 }}>
+                        John & Melissa have been notified 🚪
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Show knock counter to hosts too */}
+              {!isOpen && isHost && (tonight?.knocks || 0) > 0 && (
+                <div style={{
+                  marginTop:10, padding:"12px 16px",
+                  background:"rgba(255,149,0,0.07)",
+                  border:"1px solid rgba(255,149,0,0.2)",
+                  borderRadius:10, textAlign:"center",
+                }}>
+                  <div style={{ fontSize:28, marginBottom:4 }}>🚪</div>
+                  <div style={{ fontSize:16, color:"#ffaa00", fontWeight:700 }}>
+                    There are currently {tonight.knocks} Cock Knocker{tonight.knocks === 1 ? "" : "s"}
+                  </div>
+                  <div style={{ fontSize:13, color:dim, marginTop:4 }}>
+                    Open the bar to clear the queue
+                  </div>
+                </div>
+              )}
 
               {isHost && (
                 <button onClick={()=>setShowWalkIn(true)} style={{ width:"100%", marginTop:10, padding:"13px", background:bgCard, border:`1px solid ${border}`, borderRadius:10, color:txt2, fontSize:12, letterSpacing:2, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", fontWeight:500, cursor:"pointer" }}>
