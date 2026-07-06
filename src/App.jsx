@@ -19,7 +19,7 @@ const HOSTS = ["John","Melissa"];
 
 const AVATARS = {
   "John":"👨‍🍳","Melissa":"👩‍🍳","The Mayor":"🎩",
-  "Michele":"💃","Vice":"🕶️","April":"🌸",
+  "Michele":"💃","Vice":"🕶️","April":"🎃",
   "Rashawn":"🔥","Tess":"⭐","Garrett":"🤙","Lindsey":"🦋",
 };
 
@@ -1207,6 +1207,13 @@ export default function App() {
               }}>
                 {actionLoading?"...":myCheckedIn?"You're Inside — Tap to Leave":"Tap to Check In"}
               </button>
+
+              {/* Quick Actions — separated from check-in */}
+              <div style={{ marginTop:28, marginBottom:14, display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ flex:1, height:1, background:"rgba(255,255,255,0.08)" }} />
+                <div style={{ fontSize:11, color:dim, letterSpacing:3, fontFamily:"'Oswald',sans-serif", fontWeight:500 }}>QUICK ACTIONS</div>
+                <div style={{ flex:1, height:1, background:"rgba(255,255,255,0.08)" }} />
+              </div>
 
               {/* Julia Alert — always visible */}
               <button onClick={sendJuliaAlert} style={{
