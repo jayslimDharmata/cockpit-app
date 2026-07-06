@@ -1059,6 +1059,10 @@ export default function App() {
     await fetchAll();
   };
 
+  const sendJuliaAlert = async () => {
+    await apiPost({ action:"juliaAlert" });
+  };
+
   /* ── CLEAN OPEN TIME ── */
   const cleanTime = (t) => {
     if (!t) return "";
@@ -1202,6 +1206,19 @@ export default function App() {
                 transition:"all .2s", cursor:"pointer",
               }}>
                 {actionLoading?"...":myCheckedIn?"You're Inside — Tap to Leave":"Tap to Check In"}
+              </button>
+
+              {/* Julia Alert — always visible */}
+              <button onClick={sendJuliaAlert} style={{
+                width:"100%", marginTop:10, padding:"16px",
+                background:"rgba(255,200,0,0.08)",
+                border:"1px solid rgba(255,200,0,0.3)",
+                borderRadius:10, color:"#ffcc00",
+                fontSize:15, letterSpacing:2, textTransform:"uppercase",
+                fontFamily:"'Oswald',sans-serif", fontWeight:700,
+                cursor:"pointer", transition:"all .2s",
+              }}>
+                🚨 Julia Alert
               </button>
 
               {/* Cock Knock — only show when bar is closed and you're not a host */}
