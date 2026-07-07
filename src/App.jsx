@@ -19,7 +19,7 @@ const HOSTS = ["John","Melissa"];
 
 const AVATARS = {
   "John":"👨‍🍳","Melissa":"👩‍🍳","The Mayor":"🎩",
-  "Michele":"💃","Vice":"🕶️","April":"🎃",
+  "Michele":"💃","Vice":"🕶️","April":"🌸",
   "Rashawn":"🔥","Tess":"⭐","Garrett":"🤙","Lindsey":"🦋",
 };
 
@@ -1059,6 +1059,11 @@ export default function App() {
     await fetchAll();
   };
 
+  const denyKnock = async () => {
+    await apiPost({ action:"denyKnock" });
+    await fetchAll();
+  };
+
   const sendJuliaAlert = async () => {
     await apiPost({ action:"juliaAlert" });
   };
@@ -1264,17 +1269,30 @@ export default function App() {
               {/* Show knock counter to hosts too */}
               {!isOpen && isHost && (tonight?.knocks || 0) > 0 && (
                 <div style={{
-                  marginTop:10, padding:"12px 16px",
+                  marginTop:10, padding:"14px 16px",
                   background:"rgba(255,149,0,0.07)",
                   border:"1px solid rgba(255,149,0,0.2)",
                   borderRadius:10, textAlign:"center",
                 }}>
                   <div style={{ fontSize:28, marginBottom:4 }}>🚪</div>
-                  <div style={{ fontSize:16, color:"#ffaa00", fontWeight:700 }}>
+                  <div style={{ fontSize:16, color:"#ffaa00", fontWeight:700, marginBottom:4 }}>
                     There are currently {tonight.knocks} Cock Knocker{tonight.knocks === 1 ? "" : "s"}
                   </div>
-                  <div style={{ fontSize:13, color:dim, marginTop:4 }}>
-                    Open the bar to clear the queue
+                  <div style={{ fontSize:13, color:dim, marginBottom:12 }}>
+                    {(tonight.knockers||[]).join(", ")}
+                  </div>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={denyKnock} style={{
+                      flex:1, padding:"10px",
+                      background:"rgba(255,50,50,0.15)",
+                      border:"1px solid rgba(255,80,80,0.35)",
+                      borderRadius:8, color:red,
+                      fontSize:12, letterSpacing:2, textTransform:"uppercase",
+                      fontFamily:"'Oswald',sans-serif", fontWeight:700, cursor:"pointer",
+                    }}>🚫 Deny</button>
+                    <div style={{ flex:1, padding:"10px", fontSize:12, color:dim, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      or open the bar
+                    </div>
                   </div>
                 </div>
               )}
