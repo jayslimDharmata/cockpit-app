@@ -935,6 +935,21 @@ function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
             ))}
           </div>
 
+          <div style={{ fontSize:11, color:txt3, letterSpacing:1, marginBottom:5 }}>CATEGORY</div>
+          <select value={draft.category} onChange={e=>setDraft(d=>({...d,category:e.target.value}))} style={{
+            width:"100%", background:"rgba(255,255,255,0.07)",
+            border:`1px solid rgba(255,255,255,0.15)`, borderRadius:7,
+            padding:"10px 12px", color:txt, fontSize:14,
+            fontFamily:"'Oswald',sans-serif", outline:"none", marginBottom:10,
+            appearance:"none", cursor:"pointer",
+          }}>
+            {CATEGORIES.map(cat => (
+              <option key={cat.key} value={cat.key} style={{ background:"#2a2a2e" }}>
+                {cat.icon} {cat.label}
+              </option>
+            ))}
+          </select>
+
           <div style={{ fontSize:11, color:txt3, letterSpacing:1, marginBottom:5 }}>BUSINESS / PERSON / VEHICLE</div>
           <input value={draft.business} onChange={e=>setDraft(d=>({...d,business:e.target.value}))}
             placeholder="e.g. Mario's Pizza, White Dodge RAM, Bob's Plumbing"
