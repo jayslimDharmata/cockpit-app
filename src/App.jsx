@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import Darts from "./Darts";
 import { requestNotificationPermission, onForegroundMessage } from "./nativepush";
 
 /* ─── API ───────────────────────────────────────────── */
@@ -41,7 +40,7 @@ const BADGES = [
   { icon:"🔥", label:"On Fire",    desc:"5 visits in a week",   earned:false },
 ];
 
-const tabs = ["Status","Crew","Weather","Board","Darts","Reviews"];
+const tabs = ["Status","Crew","Weather","Board","Recs","Reviews"];
 
 /* ─── THEME ─────────────────────────────────────────── */
 const bg      = "#1c1c1e";
@@ -802,6 +801,272 @@ function WeatherTab() {
   );
 }
 
+/* ─── RECS TAB ───────────────────────────────────────── */
+const CATEGORIES = [
+  { key:"Restaurants",    label:"Restaurants",   icon:"🍽️" },
+  { key:"Contractors",    label:"Contractors",   icon:"🔨" },
+  { key:"Services",       label:"Services",      icon:"🏥" },
+  { key:"Shopping",       label:"Shopping",      icon:"🛒" },
+  { key:"Entertainment",  label:"Entertainment", icon:"🎉" },
+  { key:"Sketchy Folks",  label:"Sketchy Folks", icon:"👀" },
+  { key:"Other",          label:"Other",         icon:"📦" },
+];
+
+function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
+  const [activeCategory, setActiveCategory] = useState("Restaurants");
+  const [showForm, setShowForm]             = useState(false);
+  const [editingIndex, setEditingIndex]     = useState(null);
+  const [saving, setSaving]                 = useState(false);
+  const [deleting, setDeleting]             = useState(null);
+  const [draft, setDraft] = useState({
+    business:"", verdict:"recommend", comment:"", link:"", category:"Restaurants"
+  });
+
+  const filtered = recs.filter(r => r.category === activeCategory);
+
+  const openAdd = () => {
+    setDraft({ business:"", verdict:"recommend", comment:"", link:"", category:activeCategory });
+    setEditingIndex(null);
+    setShowForm(true);
+  };
+
+  const openEdit = (rec, idx) => {
+    setDraft({ business:rec.business, verdict:rec.verdict, comment:rec.comment||"", link:rec.link||"", category:rec.category });
+    setEditingIndex(idx);
+    setShowForm(true);
+  };
+
+  const submit = async () => {
+    if (!draft.business.trim()) return;
+    setSaving(true);
+    if (editingIndex !== null) {
+      await onEdit(editingIndex, draft);
+    } else {
+      await onAdd(draft);
+    }
+    setSaving(false);
+    setShowForm(false);
+    setEditingIndex(null);
+  };
+
+  const handleDelete = async (realIndex) => {
+    setDeleting(realIndex);
+    await onDelete(realIndex);
+    setDeleting(null);
+  };
+
+  const inputStyle = {
+    width:"100%", background:"rgba(255,255,255,0.07)",
+    border:`1px solid rgba(255,255,255,0.15)`, borderRadius:7,
+    padding:"10px 12px", color:txt, fontSize:14,
+    fontFamily:"'Oswald',sans-serif", outline:"none", marginBottom:10,
+  };
+
+  return (
+    <div>
+      {/* Category tabs */}
+      <div style={{ display:"flex", overflowX:"auto", scrollbarWidth:"none", gap:8, marginBottom:16, paddingBottom:4 }}>
+        {CATEGORIES.map(cat => (
+          <button key={cat.key} onClick={()=>{ setActiveCategory(cat.key); setShowForm(false); }} style={{
+            flex:"0 0 auto", padding:"8px 14px",
+            background:activeCategory===cat.key?"rgba(255,68,68,0.15)":bgCard,
+            border:`1px solid ${activeCategory===cat.key?"rgba(255,80,80,0.4)":border}`,
+            borderRadius:20, color:activeCategory===cat.key?red:txt3,
+            fontSize:13, fontFamily:"'Oswald',sans-serif", fontWeight:activeCategory===cat.key?600:400,
+            cursor:"pointer", whiteSpace:"nowrap", transition:"all .15s",
+          }}>
+            {cat.icon} {cat.label}
+            {recs.filter(r=>r.category===cat.key).length > 0 && (
+              <span style={{ marginLeft:6, fontSize:11, color:activeCategory===cat.key?red:dim }}>
+                {recs.filter(r=>r.category===cat.key).length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Add button */}
+      {!showForm && (
+        <button onClick={openAdd} style={{
+          width:"100%", padding:"12px", marginBottom:16,
+          background:"rgba(255,68,68,0.1)", border:"1px dashed rgba(255,80,80,0.3)",
+          borderRadius:10, color:red,
+          fontSize:13, letterSpacing:2, textTransform:"uppercase",
+          fontFamily:"'Oswald',sans-serif", fontWeight:600, cursor:"pointer",
+        }}>+ Add to {CATEGORIES.find(c=>c.key===activeCategory)?.label}</button>
+      )}
+
+      {/* Form */}
+      {showForm && (
+        <div style={{ background:bgCard2, border:`1px solid rgba(255,80,80,0.2)`, borderRadius:10, padding:"16px", marginBottom:16 }}>
+          <div style={{ fontSize:13, color:red, letterSpacing:2, marginBottom:14, fontFamily:"'Oswald',sans-serif", fontWeight:600 }}>
+            {editingIndex !== null ? "EDIT ENTRY" : "NEW ENTRY"}
+          </div>
+
+          {/* Verdict toggle */}
+          <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+            {["recommend","avoid"].map(v => (
+              <button key={v} onClick={()=>setDraft(d=>({...d,verdict:v}))} style={{
+                flex:1, padding:"10px",
+                background:draft.verdict===v
+                  ? (v==="recommend"?"rgba(76,175,80,0.2)":"rgba(255,68,68,0.2)")
+                  : "rgba(255,255,255,0.04)",
+                border:`1px solid ${draft.verdict===v
+                  ? (v==="recommend"?"rgba(76,175,80,0.5)":"rgba(255,80,80,0.5)")
+                  : border}`,
+                borderRadius:8, cursor:"pointer",
+                color:draft.verdict===v ? (v==="recommend"?"#4caf50":red) : txt3,
+                fontSize:13, fontFamily:"'Oswald',sans-serif", fontWeight:600,
+                textTransform:"uppercase", letterSpacing:1,
+              }}>
+                {v==="recommend" ? "👍 Recommend" : "👎 Avoid"}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ fontSize:11, color:txt3, letterSpacing:1, marginBottom:5 }}>BUSINESS / PERSON / VEHICLE</div>
+          <input value={draft.business} onChange={e=>setDraft(d=>({...d,business:e.target.value}))}
+            placeholder="e.g. Mario's Pizza, White Dodge RAM, Bob's Plumbing"
+            style={inputStyle} />
+
+          <div style={{ fontSize:11, color:txt3, letterSpacing:1, marginBottom:5 }}>COMMENT (optional)</div>
+          <input value={draft.comment} onChange={e=>setDraft(d=>({...d,comment:e.target.value}))}
+            placeholder="One liner — keep it short"
+            style={inputStyle} />
+
+          <div style={{ fontSize:11, color:txt3, letterSpacing:1, marginBottom:5 }}>LINK (optional)</div>
+          <input value={draft.link} onChange={e=>setDraft(d=>({...d,link:e.target.value}))}
+            placeholder="https://..."
+            style={inputStyle} />
+
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={submit} disabled={saving||!draft.business.trim()} style={{
+              flex:1, padding:"11px",
+              background:"rgba(255,68,68,0.18)", border:"1px solid rgba(255,80,80,0.45)",
+              borderRadius:7, color:txt,
+              fontSize:13, letterSpacing:2, textTransform:"uppercase",
+              fontFamily:"'Oswald',sans-serif", fontWeight:700, cursor:"pointer",
+              opacity:!draft.business.trim()?0.4:1,
+            }}>{saving?"Saving...":"Save"}</button>
+            <button onClick={()=>{ setShowForm(false); setEditingIndex(null); }} style={{
+              flex:1, padding:"11px",
+              background:"rgba(255,255,255,0.05)", border:`1px solid ${border}`,
+              borderRadius:7, color:txt3,
+              fontSize:13, letterSpacing:2, textTransform:"uppercase",
+              fontFamily:"'Oswald',sans-serif", fontWeight:500, cursor:"pointer",
+            }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Entries list */}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign:"center", padding:"30px", color:dim, fontSize:14 }}>
+          Nothing here yet — be the first to add one
+        </div>
+      ) : (
+        filtered.map((rec, i) => {
+          const realIndex = recs.indexOf(rec);
+          const isRecommend = rec.verdict === "recommend";
+          return (
+            <div key={i} style={{
+              padding:"14px 16px", marginBottom:10,
+              background:bgCard,
+              border:`1px solid ${border}`,
+              borderLeft:`4px solid ${isRecommend?"#4caf50":red}`,
+              borderRadius:10,
+            }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+                <span style={{ fontSize:22, flexShrink:0, marginTop:2 }}>{isRecommend?"👍":"👎"}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:17, color:txt, fontWeight:700, lineHeight:1.2 }}>{rec.business}</div>
+                  {rec.comment && <div style={{ fontSize:13, color:txt2, marginTop:4, lineHeight:1.4 }}>{rec.comment}</div>}
+                  {rec.link && (
+                    <a href={rec.link.startsWith("http")?rec.link:"https://"+rec.link}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize:12, color:"#7ab8c8", marginTop:4, display:"block", textDecoration:"none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      🔗 {rec.link.replace(/^https?:\/\//,"")}
+                    </a>
+                  )}
+                  <div style={{ fontSize:11, color:dim, marginTop:6 }}>
+                    {rec.name} · {rec.date}
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                  {(rec.name===myName||isHost) && (
+                    <>
+                      <button onClick={()=>openEdit(rec, realIndex)} style={{ background:"rgba(255,255,255,0.06)", border:`1px solid ${border}`, borderRadius:6, padding:"5px 8px", color:txt3, fontSize:12, cursor:"pointer" }}>✏️</button>
+                      <button onClick={()=>handleDelete(realIndex)} disabled={deleting===realIndex} style={{ background:"rgba(255,50,50,0.08)", border:"1px solid rgba(255,80,80,0.2)", borderRadius:6, padding:"5px 8px", color:red, fontSize:12, cursor:"pointer" }}>
+                        {deleting===realIndex?"...":"✕"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+/* ─── SCHEDULE OPENING ───────────────────────────────── */
+function ScheduleOpening({ scheduledTime, onSet }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState("");
+  const [saving, setSaving]   = useState(false);
+
+  const save = async () => {
+    if (!draft.trim()) return;
+    setSaving(true);
+    await onSet(draft.trim());
+    setSaving(false);
+    setEditing(false);
+    setDraft("");
+  };
+
+  if (editing) return (
+    <div style={{ display:"flex", gap:8, alignItems:"center", marginTop:4 }}>
+      <input
+        autoFocus
+        value={draft}
+        onChange={e=>setDraft(e.target.value)}
+        onKeyDown={e=>e.key==="Enter"&&save()}
+        placeholder="e.g. 7 PM or 6:30 PM"
+        style={{
+          background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,149,0,0.35)",
+          borderRadius:7, padding:"7px 12px", color:txt, fontSize:14,
+          fontFamily:"'Oswald',sans-serif", outline:"none", width:160,
+        }}
+      />
+      <button onClick={save} disabled={saving} style={{
+        background:"rgba(255,149,0,0.15)", border:"1px solid rgba(255,149,0,0.4)",
+        borderRadius:7, padding:"7px 14px", color:"#ffaa00",
+        fontSize:12, letterSpacing:1, fontFamily:"'Oswald',sans-serif",
+        fontWeight:600, cursor:"pointer",
+      }}>{saving?"...":"Set"}</button>
+      <button onClick={()=>setEditing(false)} style={{
+        background:"none", border:`1px solid ${border}`,
+        borderRadius:7, padding:"7px 10px", color:dim,
+        fontSize:12, cursor:"pointer", fontFamily:"'Oswald',sans-serif",
+      }}>Cancel</button>
+    </div>
+  );
+
+  return (
+    <button onClick={()=>setEditing(true)} style={{
+      background:"none", border:"none",
+      color:dim, fontSize:12, letterSpacing:1,
+      cursor:"pointer", fontFamily:"'Oswald',sans-serif",
+      textDecoration:"underline", textDecorationStyle:"dotted",
+      marginTop:2,
+    }}>
+      {scheduledTime ? "Change scheduled time" : "🕐 Schedule an opening time"}
+    </button>
+  );
+}
+
 /* ─── CLAP LOADER ────────────────────────────────────── */
 function ClapLoader() {
   const [phase, setPhase] = useState(0);
@@ -928,6 +1193,7 @@ export default function App() {
   const [tonight, setTonight]       = useState(null);
   const [events, setEvents]         = useState([]);
   const [reviews, setReviews]       = useState([]);
+  const [recs, setRecs]             = useState([]);
   const [loading, setLoading]       = useState(true);
   const [notifBanner, setNotifBanner] = useState(null);
   const [notifAsked, setNotifAsked] = useState(()=>localStorage.getItem("cockpit_notif_asked")||false);
@@ -946,16 +1212,18 @@ export default function App() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [crewRes, tonightRes, eventsRes, reviewsRes] = await Promise.all([
+      const [crewRes, tonightRes, eventsRes, reviewsRes, recsRes] = await Promise.all([
         apiGet("getCrew"),
         apiGet("getTonight"),
         apiGet("getEvents"),
         apiGet("getReviews"),
+        apiGet("getRecs"),
       ]);
       if (crewRes.crew)        setCrew(crewRes.crew);
       if (tonightRes.tonight)  setTonight(tonightRes.tonight);
       if (eventsRes.events)    setEvents(eventsRes.events);
       if (reviewsRes.reviews)  setReviews(reviewsRes.reviews);
+      if (recsRes.recs)        setRecs(recsRes.recs);
       setError(null);
     } catch(e) {
       setError("Couldn't reach The Cockpit. Check your connection.");
@@ -1064,8 +1332,28 @@ export default function App() {
     await fetchAll();
   };
 
+  const addRec = async (rec) => {
+    await apiPost({ action:"addRec", ...rec, name:myName });
+    await fetchAll();
+  };
+
+  const deleteRec = async (index) => {
+    await apiPost({ action:"deleteRec", index });
+    await fetchAll();
+  };
+
+  const editRec = async (index, rec) => {
+    await apiPost({ action:"editRec", index, ...rec });
+    await fetchAll();
+  };
+
   const sendJuliaAlert = async () => {
     await apiPost({ action:"juliaAlert" });
+  };
+
+  const setScheduledTime = async (time) => {
+    await apiPost({ action:"setScheduled", time });
+    await fetchAll();
   };
 
   /* ── CLEAN OPEN TIME ── */
@@ -1172,10 +1460,25 @@ export default function App() {
             {isOpen && <span style={{ background:"rgba(255,50,50,0.15)", border:"1px solid rgba(255,80,80,0.3)", borderRadius:5, padding:"3px 10px", fontSize:11, letterSpacing:1, color:"#ff8080" }}>{checkedInTotal} inside</span>}
           </div>
 
+          {/* Scheduled time display — show to everyone when set */}
+          {!isOpen && tonight?.scheduledTime && (
+            <div style={{ marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              <span style={{ fontSize:14, color:"#ffaa00", fontWeight:600, letterSpacing:1 }}>
+                🕐 Scheduled to open tonight at {tonight.scheduledTime}
+              </span>
+              {isHost && (
+                <button onClick={()=>setScheduledTime("")} style={{ background:"none", border:"none", color:dim, fontSize:14, cursor:"pointer", padding:"0 4px" }}>✕</button>
+              )}
+            </div>
+          )}
+
           {isHost && (
-            <button onClick={toggleBar} disabled={actionLoading} style={{ background:isOpen?"rgba(255,50,50,0.1)":"rgba(255,50,50,0.2)", border:`1px solid ${isOpen?"rgba(255,80,80,0.25)":"rgba(255,80,80,0.5)"}`, borderRadius:7, padding:"9px 24px", color:isOpen?"#ff7070":txt, fontSize:12, letterSpacing:3, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", fontWeight:600, cursor:"pointer" }}>
-              {actionLoading?"...":isOpen?"Lock Up":"Open The Bar"}
-            </button>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+              <button onClick={toggleBar} disabled={actionLoading} style={{ background:isOpen?"rgba(255,50,50,0.1)":"rgba(255,50,50,0.2)", border:`1px solid ${isOpen?"rgba(255,80,80,0.25)":"rgba(255,80,80,0.5)"}`, borderRadius:7, padding:"9px 24px", color:isOpen?"#ff7070":txt, fontSize:12, letterSpacing:3, textTransform:"uppercase", fontFamily:"'Oswald',sans-serif", fontWeight:600, cursor:"pointer" }}>
+                {actionLoading?"...":isOpen?"Lock Up":"Open The Bar"}
+              </button>
+              {!isOpen && <ScheduleOpening scheduledTime={tonight?.scheduledTime} onSet={setScheduledTime} />}
+            </div>
           )}
         </div>
 
@@ -1417,8 +1720,17 @@ export default function App() {
             </div>
           )}
 
-          {/* DARTS */}
-          {activeTab==="Darts" && <Darts />}
+          {/* RECS */}
+          {activeTab==="Recs" && (
+            <RecsTab
+              recs={recs}
+              myName={myName}
+              isHost={isHost}
+              onAdd={addRec}
+              onDelete={deleteRec}
+              onEdit={editRec}
+            />
+          )}
 
           {/* REVIEWS */}
           {activeTab==="Reviews" && (
