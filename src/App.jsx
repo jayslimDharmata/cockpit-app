@@ -813,7 +813,7 @@ const CATEGORIES = [
 ];
 
 function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
-  const [activeCategory, setActiveCategory] = useState("Restaurants");
+  const [activeCategory, setActiveCategory] = useState("All");
   const [showForm, setShowForm]             = useState(false);
   const [editingIndex, setEditingIndex]     = useState(null);
   const [saving, setSaving]                 = useState(false);
@@ -822,10 +822,11 @@ function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
     business:"", verdict:"recommend", comment:"", link:"", category:"Restaurants"
   });
 
-  const filtered = recs.filter(r => r.category === activeCategory);
+  const filtered = activeCategory === "All" ? recs : recs.filter(r => r.category === activeCategory);
 
   const openAdd = () => {
-    setDraft({ business:"", verdict:"recommend", comment:"", link:"", category:activeCategory });
+    const defaultCat = activeCategory === "All" ? "Restaurants" : activeCategory;
+    setDraft({ business:"", verdict:"recommend", comment:"", link:"", category:defaultCat });
     setEditingIndex(null);
     setShowForm(true);
   };
@@ -864,8 +865,19 @@ function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
 
   return (
     <div>
-      {/* Category tabs */}
+      {/* Category filter pills */}
       <div style={{ display:"flex", overflowX:"auto", scrollbarWidth:"none", gap:8, marginBottom:16, paddingBottom:4 }}>
+        {/* All pill */}
+        <button onClick={()=>{ setActiveCategory("All"); setShowForm(false); }} style={{
+          flex:"0 0 auto", padding:"8px 14px",
+          background:activeCategory==="All"?"rgba(255,68,68,0.15)":bgCard,
+          border:`1px solid ${activeCategory==="All"?"rgba(255,80,80,0.4)":border}`,
+          borderRadius:20, color:activeCategory==="All"?red:txt3,
+          fontSize:13, fontFamily:"'Oswald',sans-serif", fontWeight:activeCategory==="All"?600:400,
+          cursor:"pointer", whiteSpace:"nowrap", transition:"all .15s",
+        }}>
+          All {recs.length > 0 && <span style={{ marginLeft:4, fontSize:11 }}>{recs.length}</span>}
+        </button>
         {CATEGORIES.map(cat => (
           <button key={cat.key} onClick={()=>{ setActiveCategory(cat.key); setShowForm(false); }} style={{
             flex:"0 0 auto", padding:"8px 14px",
@@ -885,7 +897,6 @@ function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
         ))}
       </div>
 
-      {/* Add button */}
       {!showForm && (
         <button onClick={openAdd} style={{
           width:"100%", padding:"12px", marginBottom:16,
@@ -893,7 +904,7 @@ function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
           borderRadius:10, color:red,
           fontSize:13, letterSpacing:2, textTransform:"uppercase",
           fontFamily:"'Oswald',sans-serif", fontWeight:600, cursor:"pointer",
-        }}>+ Add to {CATEGORIES.find(c=>c.key===activeCategory)?.label}</button>
+        }}>+ Add Entry</button>
       )}
 
       {/* Form */}
@@ -962,7 +973,7 @@ function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
       {/* Entries list */}
       {filtered.length === 0 ? (
         <div style={{ textAlign:"center", padding:"30px", color:dim, fontSize:14 }}>
-          Nothing here yet — be the first to add one
+          {activeCategory === "All" ? "Nothing here yet — add the first entry" : "Nothing in this category yet"}
         </div>
       ) : (
         filtered.map((rec, i) => {
@@ -980,6 +991,11 @@ function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
                 <span style={{ fontSize:22, flexShrink:0, marginTop:2 }}>{isRecommend?"👍":"👎"}</span>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:17, color:txt, fontWeight:700, lineHeight:1.2 }}>{rec.business}</div>
+                  {activeCategory === "All" && (
+                    <div style={{ fontSize:11, color:dim, marginTop:2, letterSpacing:1 }}>
+                      {CATEGORIES.find(c=>c.key===rec.category)?.icon} {rec.category}
+                    </div>
+                  )}
                   {rec.comment && <div style={{ fontSize:13, color:txt2, marginTop:4, lineHeight:1.4 }}>{rec.comment}</div>}
                   {rec.link && (
                     <a href={rec.link.startsWith("http")?rec.link:"https://"+rec.link}
