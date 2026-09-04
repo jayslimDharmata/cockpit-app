@@ -606,7 +606,7 @@ function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
 /* ─── WEATHER TAB — LIVE RADAR ───────────────────────── */
 const COCKPIT_LAT  = 26.6549;
 const COCKPIT_LNG  = -80.2471;
-const ZOOM_LEVEL   = 10;
+const ZOOM_LEVEL   = 9;
 
 function WeatherTab() {
   const mapId     = "cockpit-radar-map";
@@ -661,9 +661,10 @@ function WeatherTab() {
     });
     leafletRef.current = map;
 
-    // Dark base tile layer
-    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
+    // Dark base tile layer — Stadia Maps, free no API key required
+    window.L.tileLayer("https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png", {
+      maxZoom: 18,
+      attribution: "",
     }).addTo(map);
 
     // The Cockpit marker
