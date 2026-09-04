@@ -606,14 +606,14 @@ function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
 /* ─── WEATHER TAB — LIVE RADAR ───────────────────────── */
 const COCKPIT_LAT  = 26.6549;
 const COCKPIT_LNG  = -80.2471;
-const ZOOM_LEVEL   = 9;
+const ZOOM_LEVEL   = 8;
 
 function WeatherTab() {
   const mapId     = "cockpit-radar-map";
   const mapRef    = useRef(null);
   const leafletRef = useRef(null);
   const radarRef  = useRef(null);
-  const markerRef = useRef(null);
+  const apiHostRef = useRef("https://tilecache.rainviewer.com");
   const [frames, setFrames]     = useState([]);
   const [frameIdx, setFrameIdx] = useState(0);
   const [playing, setPlaying]   = useState(true);
@@ -621,9 +621,7 @@ function WeatherTab() {
   const [timestamp, setTimestamp] = useState("");
   const timerRef  = useRef(null);
 
-  // Load Leaflet CSS + JS dynamically
   useEffect(() => {
-    // Add Leaflet CSS
     if (!document.getElementById("leaflet-css")) {
       const link = document.createElement("link");
       link.id   = "leaflet-css";
@@ -632,7 +630,6 @@ function WeatherTab() {
       document.head.appendChild(link);
     }
 
-    // Load Leaflet JS
     const loadLeaflet = () => new Promise((resolve) => {
       if (window.L) { resolve(); return; }
       const script = document.createElement("script");
@@ -652,7 +649,6 @@ function WeatherTab() {
   const initMap = async () => {
     if (!window.L || leafletRef.current) return;
 
-    // Init map
     const map = window.L.map(mapId, {
       center: [COCKPIT_LAT, COCKPIT_LNG],
       zoom: ZOOM_LEVEL,
@@ -661,10 +657,9 @@ function WeatherTab() {
     });
     leafletRef.current = map;
 
-    // Dark base tile layer — Esri, genuinely free no API key required
-    window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-      maxZoom: 16,
-      attribution: "",
+    // OpenStreetMap — reliable, free, no key needed
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
     }).addTo(map);
 
     // The Cockpit marker
@@ -674,34 +669,40 @@ function WeatherTab() {
       iconAnchor: [7, 7],
       className: "",
     });
-    const marker = window.L.marker([COCKPIT_LAT, COCKPIT_LNG], { icon }).addTo(map);
-    marker.bindPopup("<b>🍺 The Cockpit</b><br>Wellington, FL", { className:"cockpit-popup" });
-    markerRef.current = marker;
+    window.L.marker([COCKPIT_LAT, COCKPIT_LNG], { icon }).addTo(map)
+      .bindPopup("<b>🍺 The Cockpit</b><br>Wellington, FL");
 
-    // Fetch RainViewer radar frames
+    // Fetch RainViewer frames
     try {
       const res  = await fetch("https://api.rainviewer.com/public/weather-maps.json");
       const data = await res.json();
-      const radarFrames = data.radar.past.concat(data.radar.nowcast || []);
+      console.log("RainViewer data:", JSON.stringify(data).substring(0, 300));
+      const host = data.host || "https://tilecache.rainviewer.com";
+      apiHostRef.current = host;
+      const radarFrames = data.radar?.past || [];
+      console.log("Radar frames:", radarFrames.length, radarFrames[0]);
       setFrames(radarFrames);
       setLoading(false);
 
-      // Add first radar frame
       if (radarFrames.length > 0) {
-        addRadarFrame(map, radarFrames[radarFrames.length - 1], radarFrames);
+        const last = radarFrames[radarFrames.length - 1];
+        console.log("Adding frame:", host + last.path);
+        addRadarLayer(map, host, last.path);
         setFrameIdx(radarFrames.length - 1);
-        updateTimestamp(radarFrames[radarFrames.length - 1].time);
+        updateTimestamp(last.time);
       }
     } catch(e) {
+      console.error("RainViewer error:", e);
       setLoading(false);
     }
   };
 
-  const addRadarFrame = (map, frame, allFrames) => {
-    if (radarRef.current) { map.removeLayer(radarRef.current); }
+  const addRadarLayer = (map, host, path) => {
+    if (radarRef.current) map.removeLayer(radarRef.current);
+    // Use 512px tiles, color scheme 2 (rainbow), smooth=1, snow=1
     const layer = window.L.tileLayer(
-      `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
-      { opacity: 0.7, maxZoom: 19 }
+      `${host}${path}/512/{z}/{x}/{y}/2/1_1.png`,
+      { opacity: 0.75, maxZoom: 10, tileSize: 512, zoomOffset: -1 }
     );
     layer.addTo(map);
     radarRef.current = layer;
@@ -710,36 +711,32 @@ function WeatherTab() {
   const updateTimestamp = (unixTime) => {
     const d = new Date(unixTime * 1000);
     setTimestamp(d.toLocaleTimeString("en-US", {
-      hour:"numeric", minute:"2-digit",
-      timeZone:"America/New_York"
+      hour:"numeric", minute:"2-digit", timeZone:"America/New_York"
     }) + " ET");
   };
 
-  // Animate through frames
   useEffect(() => {
     if (frames.length === 0 || !leafletRef.current) return;
     if (timerRef.current) clearInterval(timerRef.current);
-
     if (playing) {
       timerRef.current = setInterval(() => {
         setFrameIdx(prev => {
           const next = (prev + 1) % frames.length;
           if (leafletRef.current && frames[next]) {
-            addRadarFrame(leafletRef.current, frames[next], frames);
+            addRadarLayer(leafletRef.current, apiHostRef.current, frames[next].path);
             updateTimestamp(frames[next].time);
           }
           return next;
         });
       }, 600);
     }
-
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [playing, frames]);
 
   const goToFrame = (idx) => {
     if (!leafletRef.current || !frames[idx]) return;
     setFrameIdx(idx);
-    addRadarFrame(leafletRef.current, frames[idx], frames);
+    addRadarLayer(leafletRef.current, apiHostRef.current, frames[idx].path);
     updateTimestamp(frames[idx].time);
   };
 
