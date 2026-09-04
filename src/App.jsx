@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { requestNotificationPermission, onForegroundMessage } from "./nativepush";
 
 /* ─── API ───────────────────────────────────────────── */
@@ -603,224 +603,60 @@ function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
   );
 }
 
-/* ─── WEATHER TAB — LIVE RADAR ───────────────────────── */
-const COCKPIT_LAT  = 26.6549;
-const COCKPIT_LNG  = -80.2471;
-const ZOOM_LEVEL   = 8;
+/* ─── WEATHER TAB — WINDY RADAR ──────────────────────── */
+const COCKPIT_LAT = 26.664539385673542;
+const COCKPIT_LNG = -80.2249280388635;
 
 function WeatherTab() {
-  const mapId     = "cockpit-radar-map";
-  const mapRef    = useRef(null);
-  const leafletRef = useRef(null);
-  const radarRef  = useRef(null);
-  const apiHostRef = useRef("https://tilecache.rainviewer.com");
-  const [frames, setFrames]     = useState([]);
-  const [frameIdx, setFrameIdx] = useState(0);
-  const [playing, setPlaying]   = useState(true);
-  const [loading, setLoading]   = useState(true);
-  const [timestamp, setTimestamp] = useState("");
-  const timerRef  = useRef(null);
+  const [zoom, setZoom] = useState(10);
 
-  useEffect(() => {
-    if (!document.getElementById("leaflet-css")) {
-      const link = document.createElement("link");
-      link.id   = "leaflet-css";
-      link.rel  = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
+  const ZOOM_LEVELS = [
+    { label:"Neighborhood", value:12 },
+    { label:"County",       value:10 },
+    { label:"Region",       value:8  },
+    { label:"State",        value:7  },
+  ];
 
-    const loadLeaflet = () => new Promise((resolve) => {
-      if (window.L) { resolve(); return; }
-      const script = document.createElement("script");
-      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-      script.onload = resolve;
-      document.head.appendChild(script);
-    });
-
-    loadLeaflet().then(initMap);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (leafletRef.current) { leafletRef.current.remove(); leafletRef.current = null; }
-    };
-  }, []);
-
-  const initMap = async () => {
-    if (!window.L || leafletRef.current) return;
-
-    const map = window.L.map(mapId, {
-      center: [COCKPIT_LAT, COCKPIT_LNG],
-      zoom: ZOOM_LEVEL,
-      zoomControl: true,
-      attributionControl: false,
-    });
-    leafletRef.current = map;
-
-    // OpenStreetMap — reliable, free, no key needed
-    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-    }).addTo(map);
-
-    // The Cockpit marker
-    const icon = window.L.divIcon({
-      html: `<div style="background:#ff3333;border:3px solid #fff;border-radius:50%;width:14px;height:14px;box-shadow:0 0 10px #ff3333,0 0 20px #ff3333;"></div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
-      className: "",
-    });
-    window.L.marker([COCKPIT_LAT, COCKPIT_LNG], { icon }).addTo(map)
-      .bindPopup("<b>🍺 The Cockpit</b><br>Wellington, FL");
-
-    // Fetch RainViewer frames
-    try {
-      const res  = await fetch("https://api.rainviewer.com/public/weather-maps.json");
-      const data = await res.json();
-      console.log("RainViewer data:", JSON.stringify(data).substring(0, 300));
-      const host = data.host || "https://tilecache.rainviewer.com";
-      apiHostRef.current = host;
-      const radarFrames = data.radar?.past || [];
-      console.log("Radar frames:", radarFrames.length, radarFrames[0]);
-      setFrames(radarFrames);
-      setLoading(false);
-
-      if (radarFrames.length > 0) {
-        const last = radarFrames[radarFrames.length - 1];
-        console.log("Adding frame:", host + last.path);
-        addRadarLayer(map, host, last.path);
-        setFrameIdx(radarFrames.length - 1);
-        updateTimestamp(last.time);
-      }
-    } catch(e) {
-      console.error("RainViewer error:", e);
-      setLoading(false);
-    }
-  };
-
-  const addRadarLayer = (map, host, path) => {
-    if (radarRef.current) map.removeLayer(radarRef.current);
-    // Use 512px tiles, color scheme 2 (rainbow), smooth=1, snow=1
-    const layer = window.L.tileLayer(
-      `${host}${path}/512/{z}/{x}/{y}/2/1_1.png`,
-      { opacity: 0.75, maxZoom: 10, tileSize: 512, zoomOffset: -1 }
-    );
-    layer.addTo(map);
-    radarRef.current = layer;
-  };
-
-  const updateTimestamp = (unixTime) => {
-    const d = new Date(unixTime * 1000);
-    setTimestamp(d.toLocaleTimeString("en-US", {
-      hour:"numeric", minute:"2-digit", timeZone:"America/New_York"
-    }) + " ET");
-  };
-
-  useEffect(() => {
-    if (frames.length === 0 || !leafletRef.current) return;
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (playing) {
-      timerRef.current = setInterval(() => {
-        setFrameIdx(prev => {
-          const next = (prev + 1) % frames.length;
-          if (leafletRef.current && frames[next]) {
-            addRadarLayer(leafletRef.current, apiHostRef.current, frames[next].path);
-            updateTimestamp(frames[next].time);
-          }
-          return next;
-        });
-      }, 600);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [playing, frames]);
-
-  const goToFrame = (idx) => {
-    if (!leafletRef.current || !frames[idx]) return;
-    setFrameIdx(idx);
-    addRadarLayer(leafletRef.current, apiHostRef.current, frames[idx].path);
-    updateTimestamp(frames[idx].time);
-  };
+  const windyUrl = `https://embed.windy.com/embed2.html?lat=${COCKPIT_LAT}&lon=${COCKPIT_LNG}&detailLat=${COCKPIT_LAT}&detailLon=${COCKPIT_LNG}&width=650&height=450&zoom=${zoom}&level=surface&overlay=rain&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1`;
 
   return (
     <div>
-      <style>{`
-        #${mapId} { width:100%; height:420px; border-radius:12px; overflow:hidden; }
-        #${mapId} .leaflet-control-zoom { border:none !important; }
-        #${mapId} .leaflet-control-zoom a {
-          background:#2a2a2e !important; color:#ffffff !important;
-          border:1px solid rgba(255,255,255,0.15) !important;
-        }
-        .cockpit-popup .leaflet-popup-content-wrapper {
-          background:#1c1c1e; color:#fff; border:1px solid rgba(255,80,80,0.4);
-        }
-        .cockpit-popup .leaflet-popup-tip { background:#1c1c1e; }
-      `}</style>
-
       <Label>Live Radar — Wellington FL</Label>
 
-      {/* Map */}
-      <div style={{ position:"relative", marginBottom:12, borderRadius:12, overflow:"hidden", border:`1px solid ${border}` }}>
-        <div id={mapId} ref={mapRef} />
-
-        {loading && (
-          <div style={{ position:"absolute", inset:0, background:"rgba(10,0,0,0.8)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, borderRadius:12 }}>
-            <div style={{ textAlign:"center", color:txt }}>
-              <div style={{ fontSize:32, marginBottom:8 }}>🌧️</div>
-              <div style={{ fontSize:14, letterSpacing:1 }}>Loading radar...</div>
-            </div>
-          </div>
-        )}
-
-        {/* Timestamp overlay */}
-        {timestamp && (
-          <div style={{ position:"absolute", top:10, left:10, zIndex:1000, background:"rgba(10,0,0,0.75)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:6, padding:"4px 10px", fontSize:12, color:txt, fontFamily:"'Share Tech Mono',monospace", letterSpacing:1 }}>
-            {timestamp}
-          </div>
-        )}
-
-        {/* The Cockpit label */}
-        <div style={{ position:"absolute", bottom:10, left:10, zIndex:1000, background:"rgba(255,30,30,0.85)", borderRadius:6, padding:"4px 10px", fontSize:11, color:"#fff", fontWeight:700, letterSpacing:1 }}>
-          🍺 The Cockpit
-        </div>
-      </div>
-
-      {/* Controls */}
-      {frames.length > 0 && (
-        <div style={{ background:bgCard, borderRadius:10, padding:"12px 14px", border:`1px solid ${border}` }}>
-          {/* Play/pause + scrubber */}
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <button onClick={()=>setPlaying(p=>!p)} style={{
-              background:"rgba(255,68,68,0.15)", border:"1px solid rgba(255,80,80,0.3)",
-              borderRadius:8, padding:"8px 14px", color:red,
-              fontSize:16, cursor:"pointer", flexShrink:0,
-            }}>
-              {playing ? "⏸" : "▶"}
-            </button>
-            <input type="range" min={0} max={frames.length-1} value={frameIdx}
-              onChange={e=>{ setPlaying(false); goToFrame(Number(e.target.value)); }}
-              style={{ flex:1, accentColor:red, cursor:"pointer" }}
-            />
-          </div>
-          <div style={{ display:"flex", justifyContent:"space-between", marginTop:6 }}>
-            <span style={{ fontSize:11, color:dim }}>
-              {frames[0] && new Date(frames[0].time*1000).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"})}
-            </span>
-            <span style={{ fontSize:11, color:dim }}>Now</span>
-          </div>
-        </div>
-      )}
-
-      {/* Legend */}
-      <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8, justifyContent:"center" }}>
-        {[["#00d8ff","Light"],["#00ff00","Moderate"],["#ffff00","Heavy"],["#ff6600","Very Heavy"],["#ff0000","Extreme"]].map(([color,label])=>(
-          <div key={label} style={{ display:"flex", alignItems:"center", gap:4 }}>
-            <div style={{ width:10, height:10, borderRadius:2, background:color }} />
-            <span style={{ fontSize:10, color:dim }}>{label}</span>
-          </div>
+      {/* Zoom selector */}
+      <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+        {ZOOM_LEVELS.map(z => (
+          <button key={z.value} onClick={()=>setZoom(z.value)} style={{
+            flex:1, padding:"8px 4px",
+            background:zoom===z.value?"rgba(255,68,68,0.15)":bgCard,
+            border:`1px solid ${zoom===z.value?"rgba(255,80,80,0.4)":border}`,
+            borderRadius:8, color:zoom===z.value?red:txt3,
+            fontSize:11, fontFamily:"'Oswald',sans-serif",
+            fontWeight:zoom===z.value?600:400,
+            cursor:"pointer", transition:"all .15s",
+            textAlign:"center",
+          }}>
+            {z.label}
+          </button>
         ))}
       </div>
 
-      <div style={{ textAlign:"center", marginTop:10, fontSize:11, color:dim }}>
-        Radar by RainViewer · Updates every 10 min
+      {/* Windy embed */}
+      <div style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${border}`, marginBottom:10 }}>
+        <iframe
+          key={zoom}
+          src={windyUrl}
+          width="100%"
+          height="420"
+          frameBorder="0"
+          style={{ display:"block" }}
+          title="Weather Radar"
+          allowFullScreen
+        />
+      </div>
+
+      <div style={{ textAlign:"center", fontSize:11, color:dim }}>
+        Powered by Windy.com · Rain overlay · Wellington FL
       </div>
     </div>
   );
