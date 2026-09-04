@@ -617,7 +617,7 @@ function WeatherTab() {
     { label:"State",        value:7  },
   ];
 
-  const windyUrl = `https://embed.windy.com/embed2.html?lat=${COCKPIT_LAT}&lon=${COCKPIT_LNG}&detailLat=${COCKPIT_LAT}&detailLon=${COCKPIT_LNG}&width=650&height=450&zoom=${zoom}&level=surface&overlay=rain&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1`;
+  const windyUrl = `https://embed.windy.com/embed2.html?lat=${COCKPIT_LAT}&lon=${COCKPIT_LNG}&detailLat=${COCKPIT_LAT}&detailLon=${COCKPIT_LNG}&width=650&height=450&zoom=${zoom}&level=surface&overlay=radar&product=radar&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1`;
 
   return (
     <div>
@@ -656,7 +656,7 @@ function WeatherTab() {
       </div>
 
       <div style={{ textAlign:"center", fontSize:11, color:dim }}>
-        Powered by Windy.com · Rain overlay · Wellington FL
+        Powered by Windy.com · Weather Radar · Wellington FL
       </div>
     </div>
   );
