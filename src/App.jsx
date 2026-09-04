@@ -1473,10 +1473,10 @@ export default function App() {
           <div style={{ background:"#242428", border:`1px solid rgba(255,80,80,0.3)`, borderRadius:12, padding:24, width:"100%", maxWidth:360 }}>
             <div style={{ fontSize:18, color:txt, fontWeight:700, marginBottom:16, letterSpacing:1 }}>Switch User</div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-              {crew.map(member=>{
-                <button key={name} onClick={()=>{ handleSelectName(name); setShowSwitch(false); }} style={{ display:"flex", alignItems:"center", gap:8, background:myName===name?"rgba(255,50,50,0.18)":bgCard, border:`1px solid ${myName===name?"rgba(255,80,80,0.4)":border}`, borderRadius:8, padding:"10px 12px", color:txt, fontFamily:"'Oswald',sans-serif", fontWeight:600, fontSize:13, cursor:"pointer" }}>
-                  <span style={{ fontSize:20 }}>{getAvatar(crew, name)}</span>
-                  <span>{name}</span>
+              {crew.map(member=>(
+                <button key={member.name} onClick={()=>{ handleSelectName(member.name); setShowSwitch(false); }} style={{ display:"flex", alignItems:"center", gap:8, background:myName===member.name?"rgba(255,50,50,0.18)":bgCard, border:`1px solid ${myName===member.name?"rgba(255,80,80,0.4)":border}`, borderRadius:8, padding:"10px 12px", color:txt, fontFamily:"'Oswald',sans-serif", fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                  <span style={{ fontSize:20 }}>{member.avatar||"👤"}</span>
+                  <span>{member.name}</span>
                 </button>
               ))}
             </div>
