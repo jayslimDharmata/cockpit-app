@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { requestNotificationPermission, onForegroundMessage } from "./nativepush";
 
 /* ─── API ───────────────────────────────────────────── */
@@ -14,15 +14,11 @@ async function apiPost(data) {
 }
 
 /* ─── STATIC DATA ───────────────────────────────────── */
-const HOSTS = ["John","Melissa"];
-
-const AVATARS = {
-  "John":"👨‍🍳","Melissa":"👩‍🍳","The Mayor":"🎩",
-  "Michele":"💃","Vice":"🕶️","April":"🌸",
-  "Rashawn":"🔥","Tess":"⭐","Garrett":"🤙","Lindsey":"🦋",
-};
-
-const CREW_NAMES = ["John","Melissa","The Mayor","Michele","Vice","April","Rashawn","Tess","Garrett","Lindsey"];
+// Crew data is loaded dynamically from the Sheet
+// Helpers that work with live crew data
+function getAvatar(crewArr, name) {
+  return crewArr.find(m=>m.name===name)?.avatar || "👤";
+}
 
 const DRINKS = [
   { name:"Tito's",               sub:"Handmade Vodka",      emoji:"🥃", color:"#d4a843", desc:"On the rocks, soda, whatever — the house standard.",                         fans:["The Mayor","April","Lindsey","Vice"] },
@@ -135,7 +131,7 @@ function Spinner() {
 }
 
 /* ─── NAME PICKER ────────────────────────────────────── */
-function NamePicker({ onSelect }) {
+function NamePicker({ onSelect, crew }) {
   return (
     <div style={{ background:bg, minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", padding:"40px 20px 30px", fontFamily:"'Oswald',sans-serif" }}>
       <style>{css}</style>
@@ -145,8 +141,8 @@ function NamePicker({ onSelect }) {
       </div>
       <div style={{ fontSize:13, color:txt3, letterSpacing:2, marginBottom:28, textAlign:"center", marginTop:20 }}>WHO ARE YOU?</div>
       <div style={{ width:"100%", maxWidth:380, display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-        {CREW_NAMES.map(name=>(
-          <button key={name} className="name-btn" onClick={()=>onSelect(name)} style={{
+        {crew.map(member=>(
+          <button key={member.name} className="name-btn" onClick={()=>onSelect(member.name)} style={{
             display:"flex", alignItems:"center", gap:10,
             background:bgCard, border:`1px solid ${border}`,
             borderRadius:10, padding:"14px 16px",
@@ -154,9 +150,9 @@ function NamePicker({ onSelect }) {
             fontFamily:"'Oswald',sans-serif", fontWeight:600,
             fontSize:14, letterSpacing:.5, transition:"all .2s",
           }}>
-            <span style={{ fontSize:24 }}>{AVATARS[name]||"👤"}</span>
-            <span>{name}</span>
-            {HOSTS.includes(name) && <span style={{ fontSize:8, color:red, background:"rgba(255,68,68,0.15)", padding:"2px 5px", borderRadius:3, letterSpacing:1, marginLeft:"auto" }}>HOST</span>}
+            <span style={{ fontSize:24 }}>{member.avatar||"👤"}</span>
+            <span>{member.name}</span>
+            {(member.isHost===true||member.isHost==="TRUE") && <span style={{ fontSize:8, color:red, background:"rgba(255,68,68,0.15)", padding:"2px 5px", borderRadius:3, letterSpacing:1, marginLeft:"auto" }}>HOST</span>}
           </button>
         ))}
       </div>
@@ -582,7 +578,7 @@ function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
             <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:8 }}>
               {/* Avatar */}
               <div style={{ width:38, height:38, borderRadius:"50%", background:bgCard2, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0, border:`1px solid ${border}` }}>
-                {AVATARS[r.name]||"👤"}
+                {getAvatar(crew, r.name)}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
@@ -607,195 +603,226 @@ function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
   );
 }
 
-/* ─── WEATHER TAB ────────────────────────────────────── */
-const WEATHER_EMOJIS = {
-  "Sunny": "☀️", "Clear": "🌙", "Mostly Clear": "🌙",
-  "Partly Cloudy": "⛅", "Mostly Cloudy": "🌥️", "Cloudy": "☁️",
-  "Overcast": "☁️", "Rain": "🌧️", "Showers": "🌦️",
-  "Thunderstorms": "⛈️", "Thunderstorm": "⛈️", "Fog": "🌫️",
-  "Windy": "💨", "Breezy": "🍃", "Hot": "🥵", "Humid": "💧",
-};
-
-function getWeatherEmoji(shortForecast) {
-  if (!shortForecast) return "🌡️";
-  for (const [key, emoji] of Object.entries(WEATHER_EMOJIS)) {
-    if (shortForecast.toLowerCase().includes(key.toLowerCase())) return emoji;
-  }
-  if (shortForecast.toLowerCase().includes("rain") || shortForecast.toLowerCase().includes("shower")) return "🌧️";
-  if (shortForecast.toLowerCase().includes("thunder")) return "⛈️";
-  if (shortForecast.toLowerCase().includes("cloud")) return "☁️";
-  if (shortForecast.toLowerCase().includes("sun") || shortForecast.toLowerCase().includes("clear")) return "☀️";
-  return "🌡️";
-}
-
-function getVibe(hours) {
-  if (!hours || hours.length === 0) return null;
-  const eveningHours = hours.filter(h => {
-    const hour = new Date(h.startTime).getHours();
-    return hour >= 17 && hour <= 23;
-  });
-  if (eveningHours.length === 0) return null;
-  const avgTemp = Math.round(eveningHours.reduce((s,h) => s + h.temperature, 0) / eveningHours.length);
-  const maxRain = Math.max(...eveningHours.map(h => h.probabilityOfPrecipitation?.value || 0));
-  const hasThunder = eveningHours.some(h => h.shortForecast?.toLowerCase().includes("thunder"));
-
-  if (hasThunder) return { text:"Lightning risk tonight ⛈️ — keep an eye on it", color:"#ff9500" };
-  if (maxRain > 60) return { text:"Good chance of rain tonight 🌧️ — garage only", color:"#5b9bd5" };
-  if (maxRain > 30) return { text:"Some rain possible tonight 🌦️", color:"#7ab8c8" };
-  if (avgTemp > 88) return { text:"Hot one tonight 🥵 — crank the AC", color:"#ff6060" };
-  if (avgTemp > 80) return { text:"Warm but manageable tonight 🌴", color:"#f0c040" };
-  return { text:"Good night for the garage 🍺", color:"#4caf50" };
-}
+/* ─── WEATHER TAB — LIVE RADAR ───────────────────────── */
+const COCKPIT_LAT  = 26.6549;
+const COCKPIT_LNG  = -80.2471;
+const ZOOM_LEVEL   = 10;
 
 function WeatherTab() {
-  const [weather, setWeather] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const mapId     = "cockpit-radar-map";
+  const mapRef    = useRef(null);
+  const leafletRef = useRef(null);
+  const radarRef  = useRef(null);
+  const markerRef = useRef(null);
+  const [frames, setFrames]     = useState([]);
+  const [frameIdx, setFrameIdx] = useState(0);
+  const [playing, setPlaying]   = useState(true);
+  const [loading, setLoading]   = useState(true);
+  const [timestamp, setTimestamp] = useState("");
+  const timerRef  = useRef(null);
 
+  // Load Leaflet CSS + JS dynamically
   useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        // Step 1: Get NWS grid point for Wellington FL
-        const pointRes = await fetch(
-          "https://api.weather.gov/points/26.6549,-80.2471",
-          { headers: { "User-Agent": "TheCockpitApp/1.0" } }
-        );
-        const pointData = await pointRes.json();
-        const hourlyUrl = pointData.properties.forecastHourly;
+    // Add Leaflet CSS
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id   = "leaflet-css";
+      link.rel  = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
 
-        // Step 2: Get hourly forecast
-        const forecastRes = await fetch(hourlyUrl, { headers: { "User-Agent": "TheCockpitApp/1.0" } });
-        const forecastData = await forecastRes.json();
-        const periods = forecastData.properties.periods;
+    // Load Leaflet JS
+    const loadLeaflet = () => new Promise((resolve) => {
+      if (window.L) { resolve(); return; }
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      script.onload = resolve;
+      document.head.appendChild(script);
+    });
 
-        // Filter to current + evening hours (4pm - midnight)
-        const now = new Date();
-        const midnight = new Date(now);
-        midnight.setHours(23, 59, 0, 0);
+    loadLeaflet().then(initMap);
 
-        const relevant = periods.filter(p => {
-          const t = new Date(p.startTime);
-          const hour = t.getHours();
-          return t >= now && t <= midnight && hour >= 15;
-        }).slice(0, 10);
-
-        // Current conditions = first period
-        const current = periods[0];
-
-        setWeather({ current, hours: relevant, allHours: periods.slice(0, 24) });
-      } catch(e) {
-        setError("Couldn't load weather. Try again.");
-      } finally {
-        setLoading(false);
-      }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (leafletRef.current) { leafletRef.current.remove(); leafletRef.current = null; }
     };
-    fetchWeather();
   }, []);
 
-  if (loading) return (
-    <div style={{ textAlign:"center", padding:"40px 0", color:dim }}>
-      <div style={{ fontSize:32, marginBottom:12 }}>🌤️</div>
-      <div style={{ fontSize:14, letterSpacing:1 }}>Loading Wellington weather...</div>
-    </div>
-  );
+  const initMap = async () => {
+    if (!window.L || leafletRef.current) return;
 
-  if (error) return (
-    <div style={{ textAlign:"center", padding:"40px 0", color:dim }}>
-      <div style={{ fontSize:32, marginBottom:12 }}>📡</div>
-      <div style={{ fontSize:14 }}>{error}</div>
-    </div>
-  );
+    // Init map
+    const map = window.L.map(mapId, {
+      center: [COCKPIT_LAT, COCKPIT_LNG],
+      zoom: ZOOM_LEVEL,
+      zoomControl: true,
+      attributionControl: false,
+    });
+    leafletRef.current = map;
 
-  const vibe = getVibe(weather.allHours);
-  const current = weather.current;
-  const currentEmoji = getWeatherEmoji(current?.shortForecast);
+    // Dark base tile layer
+    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 19,
+    }).addTo(map);
+
+    // The Cockpit marker
+    const icon = window.L.divIcon({
+      html: `<div style="background:#ff3333;border:3px solid #fff;border-radius:50%;width:14px;height:14px;box-shadow:0 0 10px #ff3333,0 0 20px #ff3333;"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+      className: "",
+    });
+    const marker = window.L.marker([COCKPIT_LAT, COCKPIT_LNG], { icon }).addTo(map);
+    marker.bindPopup("<b>🍺 The Cockpit</b><br>Wellington, FL", { className:"cockpit-popup" });
+    markerRef.current = marker;
+
+    // Fetch RainViewer radar frames
+    try {
+      const res  = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+      const data = await res.json();
+      const radarFrames = data.radar.past.concat(data.radar.nowcast || []);
+      setFrames(radarFrames);
+      setLoading(false);
+
+      // Add first radar frame
+      if (radarFrames.length > 0) {
+        addRadarFrame(map, radarFrames[radarFrames.length - 1], radarFrames);
+        setFrameIdx(radarFrames.length - 1);
+        updateTimestamp(radarFrames[radarFrames.length - 1].time);
+      }
+    } catch(e) {
+      setLoading(false);
+    }
+  };
+
+  const addRadarFrame = (map, frame, allFrames) => {
+    if (radarRef.current) { map.removeLayer(radarRef.current); }
+    const layer = window.L.tileLayer(
+      `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
+      { opacity: 0.7, maxZoom: 19 }
+    );
+    layer.addTo(map);
+    radarRef.current = layer;
+  };
+
+  const updateTimestamp = (unixTime) => {
+    const d = new Date(unixTime * 1000);
+    setTimestamp(d.toLocaleTimeString("en-US", {
+      hour:"numeric", minute:"2-digit",
+      timeZone:"America/New_York"
+    }) + " ET");
+  };
+
+  // Animate through frames
+  useEffect(() => {
+    if (frames.length === 0 || !leafletRef.current) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    if (playing) {
+      timerRef.current = setInterval(() => {
+        setFrameIdx(prev => {
+          const next = (prev + 1) % frames.length;
+          if (leafletRef.current && frames[next]) {
+            addRadarFrame(leafletRef.current, frames[next], frames);
+            updateTimestamp(frames[next].time);
+          }
+          return next;
+        });
+      }, 600);
+    }
+
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [playing, frames]);
+
+  const goToFrame = (idx) => {
+    if (!leafletRef.current || !frames[idx]) return;
+    setFrameIdx(idx);
+    addRadarFrame(leafletRef.current, frames[idx], frames);
+    updateTimestamp(frames[idx].time);
+  };
 
   return (
     <div>
-      {/* Vibe banner */}
-      {vibe && (
-        <div style={{ padding:"14px 16px", marginBottom:16, borderRadius:10, background:"rgba(255,255,255,0.05)", border:`1px solid ${vibe.color}44`, textAlign:"center" }}>
-          <div style={{ fontSize:16, color:vibe.color, fontWeight:700 }}>{vibe.text}</div>
+      <style>{`
+        #${mapId} { width:100%; height:420px; border-radius:12px; overflow:hidden; }
+        #${mapId} .leaflet-control-zoom { border:none !important; }
+        #${mapId} .leaflet-control-zoom a {
+          background:#2a2a2e !important; color:#ffffff !important;
+          border:1px solid rgba(255,255,255,0.15) !important;
+        }
+        .cockpit-popup .leaflet-popup-content-wrapper {
+          background:#1c1c1e; color:#fff; border:1px solid rgba(255,80,80,0.4);
+        }
+        .cockpit-popup .leaflet-popup-tip { background:#1c1c1e; }
+      `}</style>
+
+      <Label>Live Radar — Wellington FL</Label>
+
+      {/* Map */}
+      <div style={{ position:"relative", marginBottom:12, borderRadius:12, overflow:"hidden", border:`1px solid ${border}` }}>
+        <div id={mapId} ref={mapRef} />
+
+        {loading && (
+          <div style={{ position:"absolute", inset:0, background:"rgba(10,0,0,0.8)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, borderRadius:12 }}>
+            <div style={{ textAlign:"center", color:txt }}>
+              <div style={{ fontSize:32, marginBottom:8 }}>🌧️</div>
+              <div style={{ fontSize:14, letterSpacing:1 }}>Loading radar...</div>
+            </div>
+          </div>
+        )}
+
+        {/* Timestamp overlay */}
+        {timestamp && (
+          <div style={{ position:"absolute", top:10, left:10, zIndex:1000, background:"rgba(10,0,0,0.75)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:6, padding:"4px 10px", fontSize:12, color:txt, fontFamily:"'Share Tech Mono',monospace", letterSpacing:1 }}>
+            {timestamp}
+          </div>
+        )}
+
+        {/* The Cockpit label */}
+        <div style={{ position:"absolute", bottom:10, left:10, zIndex:1000, background:"rgba(255,30,30,0.85)", borderRadius:6, padding:"4px 10px", fontSize:11, color:"#fff", fontWeight:700, letterSpacing:1 }}>
+          🍺 The Cockpit
+        </div>
+      </div>
+
+      {/* Controls */}
+      {frames.length > 0 && (
+        <div style={{ background:bgCard, borderRadius:10, padding:"12px 14px", border:`1px solid ${border}` }}>
+          {/* Play/pause + scrubber */}
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <button onClick={()=>setPlaying(p=>!p)} style={{
+              background:"rgba(255,68,68,0.15)", border:"1px solid rgba(255,80,80,0.3)",
+              borderRadius:8, padding:"8px 14px", color:red,
+              fontSize:16, cursor:"pointer", flexShrink:0,
+            }}>
+              {playing ? "⏸" : "▶"}
+            </button>
+            <input type="range" min={0} max={frames.length-1} value={frameIdx}
+              onChange={e=>{ setPlaying(false); goToFrame(Number(e.target.value)); }}
+              style={{ flex:1, accentColor:red, cursor:"pointer" }}
+            />
+          </div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:6 }}>
+            <span style={{ fontSize:11, color:dim }}>
+              {frames[0] && new Date(frames[0].time*1000).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"America/New_York"})}
+            </span>
+            <span style={{ fontSize:11, color:dim }}>Now</span>
+          </div>
         </div>
       )}
 
-      {/* Current conditions */}
-      <Label>Right Now — Wellington</Label>
-      <Card style={{ marginBottom:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-          <div style={{ fontSize:52, lineHeight:1 }}>{currentEmoji}</div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:36, color:txt, fontWeight:700, lineHeight:1 }}>
-              {current?.temperature}°{current?.temperatureUnit}
-            </div>
-            <div style={{ fontSize:16, color:txt2, marginTop:4 }}>{current?.shortForecast}</div>
-            <div style={{ fontSize:14, color:dim, marginTop:2 }}>
-              {current?.windSpeed} {current?.windDirection}
-            </div>
+      {/* Legend */}
+      <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8, justifyContent:"center" }}>
+        {[["#00d8ff","Light"],["#00ff00","Moderate"],["#ffff00","Heavy"],["#ff6600","Very Heavy"],["#ff0000","Extreme"]].map(([color,label])=>(
+          <div key={label} style={{ display:"flex", alignItems:"center", gap:4 }}>
+            <div style={{ width:10, height:10, borderRadius:2, background:color }} />
+            <span style={{ fontSize:10, color:dim }}>{label}</span>
           </div>
-          <div style={{ textAlign:"right" }}>
-            {(current?.probabilityOfPrecipitation?.value || 0) > 0 && (
-              <div style={{ fontSize:13, color:"#7ab8c8" }}>
-                💧 {current.probabilityOfPrecipitation.value}% rain
-              </div>
-            )}
-            <div style={{ fontSize:13, color:dim, marginTop:4 }}>
-              Humidity: {current?.relativeHumidity?.value || "—"}%
-            </div>
-          </div>
-        </div>
-      </Card>
+        ))}
+      </div>
 
-      {/* Evening hourly forecast */}
-      {weather.hours.length > 0 && (
-        <>
-          <Label>Tonight's Forecast</Label>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {weather.hours.map((h, i) => {
-              const hour = new Date(h.startTime);
-              const timeStr = hour.toLocaleTimeString("en-US", {
-                hour:"numeric", minute:"2-digit",
-                timeZone:"America/New_York"
-              });
-              const rain = h.probabilityOfPrecipitation?.value || 0;
-              const emoji = getWeatherEmoji(h.shortForecast);
-              const isNow = i === 0;
-
-              return (
-                <div key={i} style={{
-                  display:"flex", alignItems:"center", gap:12,
-                  padding:"12px 14px", borderRadius:10,
-                  background: isNow ? "rgba(255,68,68,0.1)" : bgCard,
-                  border:`1px solid ${isNow ? "rgba(255,80,80,0.3)" : border}`,
-                }}>
-                  <div style={{ minWidth:60, fontSize:13, color:isNow?red:dim, fontWeight:isNow?700:400 }}>
-                    {timeStr}
-                  </div>
-                  <span style={{ fontSize:22 }}>{emoji}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:14, color:txt }}>{h.shortForecast}</div>
-                    {rain > 0 && (
-                      <div style={{ fontSize:12, color:"#7ab8c8", marginTop:2 }}>💧 {rain}% rain</div>
-                    )}
-                  </div>
-                  <div style={{ fontSize:18, color:txt, fontWeight:700 }}>
-                    {h.temperature}°
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {weather.hours.length === 0 && (
-        <div style={{ textAlign:"center", padding:"20px", color:dim, fontSize:14 }}>
-          No evening forecast available yet — check back after noon.
-        </div>
-      )}
-
-      <div style={{ textAlign:"center", marginTop:16, fontSize:11, color:dim }}>
-        Data from National Weather Service · Wellington, FL
+      <div style={{ textAlign:"center", marginTop:10, fontSize:11, color:dim }}>
+        Radar by RainViewer · Updates every 10 min
       </div>
     </div>
   );
@@ -1234,7 +1261,7 @@ export default function App() {
   const [showSwitch, setShowSwitch] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const isHost = HOSTS.includes(myName);
+  const isHost = crew.find(m=>m.name===myName)?.isHost===true || crew.find(m=>m.name===myName)?.isHost==="TRUE";
 
   const handleSelectName = (name) => {
     localStorage.setItem("cockpit_user", name);
@@ -1264,11 +1291,17 @@ export default function App() {
   }, []);
 
   useEffect(()=>{
-    if (myName) {
-      fetchAll();
-      const interval = setInterval(fetchAll, 30000);
-      return ()=>clearInterval(interval);
+    // Always fetch crew so NamePicker has data even before name is chosen
+    if (!myName) {
+      apiGet("getCrew").then(res => {
+        if (res.crew) setCrew(res.crew);
+        setLoading(false);
+      }).catch(()=>setLoading(false));
+      return;
     }
+    fetchAll();
+    const interval = setInterval(fetchAll, 30000);
+    return ()=>clearInterval(interval);
   },[myName, fetchAll]);
 
   // Request notification permission once per device
@@ -1408,7 +1441,16 @@ export default function App() {
   const myData         = crew.find(m=>m.name===myName);
   const myCheckedIn    = checkedInNames.includes(myName);
 
-  if (!myName) return <NamePicker onSelect={handleSelectName} />;
+  if (!myName) {
+    if (loading || crew.length === 0) return (
+      <div style={{ background:bg, minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, fontFamily:"'Oswald',sans-serif" }}>
+        <style>{css}</style>
+        <div className="neon-title" style={{ fontSize:32 }}>The COCKpit</div>
+        <Spinner />
+      </div>
+    );
+    return <NamePicker onSelect={handleSelectName} crew={crew} />;
+  }
 
   if (loading) return <ClapLoader />;
 
@@ -1431,9 +1473,9 @@ export default function App() {
           <div style={{ background:"#242428", border:`1px solid rgba(255,80,80,0.3)`, borderRadius:12, padding:24, width:"100%", maxWidth:360 }}>
             <div style={{ fontSize:18, color:txt, fontWeight:700, marginBottom:16, letterSpacing:1 }}>Switch User</div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-              {CREW_NAMES.map(name=>(
+              {crew.map(member=>{
                 <button key={name} onClick={()=>{ handleSelectName(name); setShowSwitch(false); }} style={{ display:"flex", alignItems:"center", gap:8, background:myName===name?"rgba(255,50,50,0.18)":bgCard, border:`1px solid ${myName===name?"rgba(255,80,80,0.4)":border}`, borderRadius:8, padding:"10px 12px", color:txt, fontFamily:"'Oswald',sans-serif", fontWeight:600, fontSize:13, cursor:"pointer" }}>
-                  <span style={{ fontSize:20 }}>{AVATARS[name]||"👤"}</span>
+                  <span style={{ fontSize:20 }}>{getAvatar(crew, name)}</span>
                   <span>{name}</span>
                 </button>
               ))}
@@ -1473,7 +1515,7 @@ export default function App() {
         {/* ── HEADER ── */}
         <div style={{ textAlign:"center", padding:"26px 20px 16px", borderBottom:`1px solid ${border}`, position:"relative", zIndex:1, background:bg }}>
           <button onClick={()=>setShowSwitch(true)} style={{ position:"absolute", top:14, right:14, display:"flex", alignItems:"center", gap:6, background:bgCard, border:`1px solid ${border}`, borderRadius:20, padding:"5px 10px 5px 7px", cursor:"pointer" }}>
-            <span style={{ fontSize:16 }}>{AVATARS[myName]||"👤"}</span>
+            <span style={{ fontSize:16 }}>{getAvatar(crew, myName)}</span>
             <span style={{ fontSize:11, color:txt2, fontFamily:"'Oswald',sans-serif", letterSpacing:.5, fontWeight:500 }}>{myName}</span>
           </button>
 
@@ -1661,7 +1703,7 @@ export default function App() {
                 return (
                   <Card key={m.name} highlight={cin}>
                     <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <span style={{ fontSize:28 }}>{AVATARS[m.name]||"👤"}</span>
+                      <span style={{ fontSize:28 }}>{getAvatar(crew, m.name)}</span>
                       <div style={{ flex:1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3 }}>
                           <span style={{ fontSize:18, color:txt, fontWeight:700 }}>{m.name}</span>
@@ -1683,7 +1725,7 @@ export default function App() {
                   return (
                     <Card key={m.name} highlight={cin} onClick={()=>toggleCheckIn(m.name,m.checkedIn)} style={{ cursor:"pointer" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                        <span style={{ fontSize:26 }}>{AVATARS[m.name]||"👤"}</span>
+                        <span style={{ fontSize:26 }}>{getAvatar(crew, m.name)}</span>
                         <div style={{ flex:1 }}>
                           <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
                             <span style={{ fontSize:15, color:txt, fontWeight:600 }}>{m.name}</span>
@@ -1729,7 +1771,7 @@ export default function App() {
                   <span style={{ fontSize:16, width:28, textAlign:"center", color:i===0?red:dim }}>
                     {i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}
                   </span>
-                  <span style={{ fontSize:24 }}>{AVATARS[m.name]||"👤"}</span>
+                  <span style={{ fontSize:24 }}>{getAvatar(crew, m.name)}</span>
                   <span style={{ flex:1, fontSize:15, color:txt, fontWeight:600 }}>{m.name}</span>
                   {(m.isHost===true||m.isHost==="TRUE") && <span style={{ fontSize:9, color:red, background:"rgba(255,68,68,0.15)", padding:"2px 6px", borderRadius:3 }}>HOST</span>}
                   <span style={{ fontSize:16, color:i===0?red:txt2, fontWeight:i===0?700:400 }}>{m.visits}</span>
