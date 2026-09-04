@@ -661,9 +661,9 @@ function WeatherTab() {
     });
     leafletRef.current = map;
 
-    // Dark base tile layer — Stadia Maps, free no API key required
-    window.L.tileLayer("https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png", {
-      maxZoom: 18,
+    // Dark base tile layer — Esri, genuinely free no API key required
+    window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 16,
       attribution: "",
     }).addTo(map);
 
