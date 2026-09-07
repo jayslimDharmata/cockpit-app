@@ -434,7 +434,7 @@ function Stars({ count, size=18, interactive=false, onSelect }) {
   );
 }
 
-function ReviewsTab({ reviews, myName, isHost, onSubmit, onDelete }) {
+function ReviewsTab({ reviews, myName, isHost, crew, onSubmit, onDelete }) {
   const [stars, setStars]   = useState(0);
   const [text, setText]     = useState("");
   const [saving, setSaving] = useState(false);
@@ -1645,6 +1645,7 @@ export default function App() {
               reviews={reviews}
               myName={myName}
               isHost={isHost}
+              crew={crew}
               onSubmit={submitReview}
               onDelete={deleteReview}
             />
