@@ -40,14 +40,14 @@ const THEMES = {
     tabExtra: null,
   },
   halloween: {
-    accent: "#ff6600",
+    accent: "#ff6a00",
     accentDim: "#cc4400",
-    accentGlow: "rgba(255,102,0,0.25)",
-    bgTop: "#1a0d00",
-    bgCard: "#2a1a08",
-    bgCard2: "#362210",
-    neonColor: "#ff6600",
-    dotColor: "#ff6600",
+    accentGlow: "rgba(255,106,0,0.35)",
+    bgTop: "#0d0800",
+    bgCard: "#1e1000",
+    bgCard2: "#2a1800",
+    neonColor: "#ff6a00",
+    dotColor: "#ff6a00",
     label: "🎃",
     tabExtra: "🎃 Games",
   },
@@ -286,27 +286,62 @@ const dim     = "#777777";
 
 /* ─── SEASONAL CSS ANIMATIONS ────────────────────────── */
 const batCSS = SEASON === "halloween" ? `
-  @keyframes batFly {
-    0%   { transform: translateX(-60px) translateY(0px) scaleX(1); opacity:0; }
-    10%  { opacity:1; }
-    45%  { transform: translateX(48vw) translateY(-30px) scaleX(1); }
-    55%  { transform: translateX(52vw) translateY(-30px) scaleX(-1); }
-    90%  { opacity:1; }
-    100% { transform: translateX(110vw) translateY(10px) scaleX(-1); opacity:0; }
+  @keyframes batFly1 {
+    0%   { transform: translateX(-80px) translateY(0px); opacity:0; }
+    8%   { opacity:1; }
+    40%  { transform: translateX(40vw) translateY(-40px); }
+    60%  { transform: translateX(60vw) translateY(-20px); }
+    92%  { opacity:1; }
+    100% { transform: translateX(110vw) translateY(15px); opacity:0; }
   }
-  @keyframes batWing {
-    0%,100% { transform: scaleY(1); }
-    50%     { transform: scaleY(0.5); }
+  @keyframes batFly2 {
+    0%   { transform: translateX(110vw) translateY(0px) scaleX(-1); opacity:0; }
+    8%   { opacity:1; }
+    50%  { transform: translateX(50vw) translateY(-50px) scaleX(-1); }
+    92%  { opacity:1; }
+    100% { transform: translateX(-80px) translateY(20px) scaleX(-1); opacity:0; }
+  }
+  @keyframes batFly3 {
+    0%   { transform: translateX(-80px) translateY(0px); opacity:0; }
+    10%  { opacity:1; }
+    30%  { transform: translateX(25vw) translateY(-60px); }
+    70%  { transform: translateX(75vw) translateY(-30px); }
+    90%  { opacity:1; }
+    100% { transform: translateX(110vw) translateY(5px); opacity:0; }
   }
   .bat-container {
     position: fixed; top:0; left:0; width:100%; height:100%;
-    pointer-events:none; z-index:0; overflow:hidden;
+    pointer-events:none; z-index:999; overflow:hidden;
   }
   .bat {
     position: absolute;
-    font-size: 22px;
-    animation: batFly linear infinite;
-    filter: drop-shadow(0 0 4px rgba(255,102,0,0.4));
+    font-size: 28px;
+    filter: drop-shadow(0 0 6px rgba(255,106,0,0.6));
+  }
+  .bat-1 { animation: batFly1 9s linear infinite; }
+  .bat-2 { animation: batFly2 12s linear infinite; }
+  .bat-3 { animation: batFly3 7s linear infinite; }
+  .bat-4 { animation: batFly1 14s linear infinite; font-size:20px; }
+  .bat-5 { animation: batFly2 10s linear infinite; font-size:22px; }
+  @keyframes moonGlow {
+    0%,100% { opacity:0.7; filter:drop-shadow(0 0 10px rgba(255,200,50,0.4)); }
+    50%     { opacity:1;   filter:drop-shadow(0 0 24px rgba(255,200,50,0.8)); }
+  }
+  .halloween-moon {
+    position:fixed; top:16px; left:16px; font-size:36px; z-index:998;
+    pointer-events:none; animation:moonGlow 4s ease-in-out infinite;
+  }
+  @keyframes spiderDangle {
+    0%,100% { transform:translateY(0px); }
+    50%     { transform:translateY(18px); }
+  }
+  .spider {
+    position:fixed; top:0; font-size:22px; z-index:998;
+    pointer-events:none; animation:spiderDangle ease-in-out infinite;
+  }
+  .spider::before {
+    content:''; position:absolute; top:-40px; left:50%; width:1px;
+    background:rgba(255,106,0,0.3);
   }
 ` : "";
 
@@ -388,7 +423,7 @@ const css = `
 
   html,body{ margin:0; padding:0; background:${bg}; font-size:16px; }
   * { -webkit-text-size-adjust: 100%; }
-  .neon-title{ font-family:'Permanent Marker',cursive!important; animation:neonFlicker 5s infinite; color:#fff; }
+  .neon-title{ font-family:'Permanent Marker',cursive!important; animation:neonFlicker 5s infinite; color:${SEASON==="halloween"?"#ffaa44":"#fff"}; }
   .dark-title{ font-family:'Permanent Marker',cursive!important; color:#5a2020; }
   .tab-content{ animation:fadeUp .22s ease forwards; }
   .live-dot{ animation:dotBlink 1.4s ease infinite; }
@@ -407,15 +442,18 @@ const css = `
 function SeasonalDecorations() {
   if (SEASON === "halloween") {
     return (
-      <div className="bat-container" aria-hidden="true">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="bat" style={{
-            top: `${10 + i * 18}%`,
-            animationDuration: `${8 + i * 3}s`,
-            animationDelay: `${i * 2.5}s`,
-          }}>🦇</div>
-        ))}
-      </div>
+      <>
+        <div className="halloween-moon" aria-hidden="true">🌕</div>
+        <div className="spider" style={{ right:24, animationDuration:"3s", animationDelay:"0s" }} aria-hidden="true">🕷️</div>
+        <div className="spider" style={{ right:80, animationDuration:"4.5s", animationDelay:"1.2s", fontSize:16 }} aria-hidden="true">🕷️</div>
+        <div className="bat-container" aria-hidden="true">
+          <div className="bat bat-1" style={{ top:"8%" }}>🦇</div>
+          <div className="bat bat-2" style={{ top:"22%" }}>🦇</div>
+          <div className="bat bat-3" style={{ top:"5%" }}>🦇</div>
+          <div className="bat bat-4" style={{ top:"35%", animationDelay:"3s" }}>🦇</div>
+          <div className="bat bat-5" style={{ top:"15%", animationDelay:"6s" }}>🦇</div>
+        </div>
+      </>
     );
   }
   if (SEASON === "thanksgiving") {
@@ -920,7 +958,7 @@ function ReviewsTab({ reviews, myName, isHost, crew, onSubmit, onDelete }) {
         )}
       </div>
 
-      {reviews.map((r,i) => (
+      {[...reviews].reverse().map((r,i) => (
         <div key={i} style={{ background:bgCard, borderRadius:12, padding:"16px", marginBottom:12, border:`1px solid ${border}` }}>
           <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:8 }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -946,87 +984,57 @@ function ReviewsTab({ reviews, myName, isHost, crew, onSubmit, onDelete }) {
   );
 }
 
-/* ─── WEATHER TAB ────────────────────────────────────── */
+/* ─── WEATHER TAB — WINDY RADAR ──────────────────────── */
+const COCKPIT_LAT = 26.664539385673542;
+const COCKPIT_LNG = -80.2249280388635;
+
 function WeatherTab() {
-  const [weather, setWeather] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr]         = useState(null);
+  const [zoom, setZoom] = useState(10);
 
-  useEffect(() => {
-    if (!("geolocation" in navigator)) { setErr("Location unavailable"); setLoading(false); return; }
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=5`);
-        const d = await r.json();
-        setWeather(d);
-      } catch(e) { setErr("Couldn't load weather"); }
-      setLoading(false);
-    }, () => { setErr("Location permission denied"); setLoading(false); });
-  }, []);
+  const ZOOM_LEVELS = [
+    { label:"Neighborhood", value:12 },
+    { label:"County",       value:10 },
+    { label:"Region",       value:8  },
+    { label:"State",        value:7  },
+  ];
 
-  const wmoDesc = (code) => {
-    if (code === 0) return "Clear Sky";
-    if (code <= 3) return "Partly Cloudy";
-    if (code <= 49) return "Foggy";
-    if (code <= 67) return "Rainy";
-    if (code <= 77) return "Snowy";
-    if (code <= 82) return "Showers";
-    if (code <= 99) return "Thunderstorm";
-    return "Unknown";
-  };
-
-  const wmoIcon = (code) => {
-    if (code === 0) return "☀️";
-    if (code <= 3) return "⛅";
-    if (code <= 49) return "🌫️";
-    if (code <= 67) return "🌧️";
-    if (code <= 77) return "❄️";
-    if (code <= 82) return "🌦️";
-    return "⛈️";
-  };
-
-  const dayLabel = (iso, i) => {
-    if (i === 0) return "Today";
-    if (i === 1) return "Tomorrow";
-    return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { weekday:"short" });
-  };
-
-  if (loading) return <div style={{ textAlign:"center", padding:40, color:dim }}><Spinner /></div>;
-  if (err) return <div style={{ textAlign:"center", padding:40, color:dim, fontSize:14 }}>{err}</div>;
-  if (!weather) return null;
-
-  const cw = weather.current_weather;
-  const daily = weather.daily;
+  const windyUrl = `https://embed.windy.com/embed2.html?lat=${COCKPIT_LAT}&lon=${COCKPIT_LNG}&detailLat=${COCKPIT_LAT}&detailLon=${COCKPIT_LNG}&width=650&height=450&zoom=${zoom}&level=surface&overlay=radar&product=radar&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=mph&metricTemp=%C2%B0F&radarRange=-1`;
 
   return (
     <div>
-      <div style={{ background:bgCard, borderRadius:14, padding:"20px 18px", marginBottom:16, border:`1px solid ${border}` }}>
-        <div style={{ fontSize:12, color:dim, letterSpacing:2, marginBottom:4, fontFamily:"'Oswald',sans-serif" }}>RIGHT NOW</div>
-        <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-          <div style={{ fontSize:56 }}>{wmoIcon(cw.weathercode)}</div>
-          <div>
-            <div style={{ fontSize:48, color:txt, fontWeight:700, lineHeight:1 }}>{Math.round(cw.temperature)}°F</div>
-            <div style={{ fontSize:15, color:txt2, marginTop:4 }}>{wmoDesc(cw.weathercode)}</div>
-            <div style={{ fontSize:12, color:dim, marginTop:2 }}>Wind {Math.round(cw.windspeed)} mph</div>
-          </div>
-        </div>
+      <Label>Live Radar — Wellington FL</Label>
+
+      <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+        {ZOOM_LEVELS.map(z => (
+          <button key={z.value} onClick={()=>setZoom(z.value)} style={{
+            flex:1, padding:"8px 4px",
+            background:zoom===z.value?`rgba(${SEASON==="halloween"?"255,102,0":"255,68,68"},0.15)`:bgCard,
+            border:`1px solid ${zoom===z.value?red:border}`,
+            borderRadius:8, color:zoom===z.value?red:txt3,
+            fontSize:11, fontFamily:"'Oswald',sans-serif",
+            fontWeight:zoom===z.value?600:400,
+            cursor:"pointer", transition:"all .15s", textAlign:"center",
+          }}>
+            {z.label}
+          </button>
+        ))}
       </div>
 
-      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-        {daily.time.slice(0,5).map((iso, i) => (
-          <div key={iso} style={{ background:bgCard, borderRadius:10, padding:"12px 16px", border:`1px solid ${border}`, display:"flex", alignItems:"center", gap:12 }}>
-            <span style={{ fontSize:26 }}>{wmoIcon(daily.weathercode[i])}</span>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:15, color:txt, fontWeight:600 }}>{dayLabel(iso, i)}</div>
-              <div style={{ fontSize:12, color:dim, marginTop:1 }}>{daily.precipitation_probability_max[i]}% rain</div>
-            </div>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:16, color:txt, fontWeight:700 }}>{Math.round(daily.temperature_2m_max[i])}°</div>
-              <div style={{ fontSize:13, color:dim }}>{Math.round(daily.temperature_2m_min[i])}°</div>
-            </div>
-          </div>
-        ))}
+      <div style={{ borderRadius:12, overflow:"hidden", border:`1px solid ${border}`, marginBottom:10 }}>
+        <iframe
+          key={zoom}
+          src={windyUrl}
+          width="100%"
+          height="420"
+          frameBorder="0"
+          style={{ display:"block" }}
+          title="Weather Radar"
+          allowFullScreen
+        />
+      </div>
+
+      <div style={{ textAlign:"center", fontSize:11, color:dim }}>
+        Powered by Windy.com · Weather Radar · Wellington FL
       </div>
     </div>
   );
@@ -1705,6 +1713,10 @@ export default function App() {
 
         {/* Seasonal top glow */}
         <div style={{ position:"fixed", top:-120, left:"50%", transform:"translateX(-50%)", width:400, height:260, borderRadius:"50%", pointerEvents:"none", zIndex:0, background:isOpen?`radial-gradient(ellipse,${T.accentGlow} 0%,transparent 70%)`:"none", transition:"background 1.2s ease" }} />
+        {/* Halloween ambient fog glow */}
+        {SEASON === "halloween" && (
+          <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"30vh", pointerEvents:"none", zIndex:0, background:"radial-gradient(ellipse at 50% 100%, rgba(255,80,0,0.08) 0%, transparent 70%)" }} />
+        )}
 
         {/* ── HEADER ── */}
         <div style={{ textAlign:"center", padding:"26px 20px 16px", borderBottom:`1px solid ${border}`, position:"relative", zIndex:1, background:bg }}>
@@ -1773,37 +1785,12 @@ export default function App() {
           {/* STATUS */}
           {activeTab==="Status" && (
             <div>
-              {/* Bar open/closed status card */}
-              <div style={{ marginBottom:20 }}>
-                <div style={{
-                  padding:"16px",
-                  background: isOpen ? `rgba(${SEASON==="halloween"?"255,102,0":"255,50,50"},0.07)` : bgCard,
-                  border: `1px solid ${isOpen ? `rgba(${SEASON==="halloween"?"255,120,0":"255,80,80"},0.25)` : border}`,
-                  borderRadius:12,
-                  display:"flex", alignItems:"center", gap:14,
-                }}>
-                  <div style={{ width:14, height:14, borderRadius:"50%", background:isOpen?T.dotColor:"#2a2a2a", boxShadow:isOpen?`0 0 10px ${T.dotColor}`:"none", flexShrink:0 }} className={isOpen?"live-dot":""} />
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:20, color:txt, fontWeight:700, letterSpacing:1 }}>
-                      {isOpen ? "Bar is Open 🍺" : "Bar is Closed"}
-                    </div>
-                    {isOpen && tonight?.openTime && (
-                      <div style={{ fontSize:13, color:txt3, marginTop:2 }}>Open since {cleanTime(tonight.openTime)}</div>
-                    )}
-                    {!isOpen && tonight?.scheduledTime && (
-                      <div style={{ fontSize:13, color:"#ffaa00", marginTop:2 }}>Opening at {tonight.scheduledTime}</div>
-                    )}
-                    {isOpen && <div style={{ fontSize:13, color:txt3, marginTop:2 }}>{checkedInTotal} {checkedInTotal===1?"person":"people"} inside</div>}
-                  </div>
-                </div>
-              </div>
+              {/* TV Widget — top of status */}
+              <Label>On the TV</Label>
+              <TVWidget isHost={isHost} whatsOn={tonight?.whatsOn||"Nothing on"} onSetWhatsOn={setWhatsOn} />
 
               {/* Events */}
               <EventsWidget events={events} isHost={isHost} onAdd={addEvent} onDelete={deleteEvent} />
-
-              {/* TV Widget */}
-              <Label>On the TV</Label>
-              <TVWidget isHost={isHost} whatsOn={tonight?.whatsOn||"Nothing on"} onSetWhatsOn={setWhatsOn} />
 
               {/* Check-In */}
               <Label>Your Check-In</Label>
