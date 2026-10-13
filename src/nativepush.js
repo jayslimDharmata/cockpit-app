@@ -31,26 +31,28 @@ export async function requestNotificationPermission(userName) {
     await navigator.serviceWorker.ready;
     console.log("Cockpit Push: service worker ready");
 
-    // Subscribe directly to the browser's push service (Google/Apple/Mozilla)
-    let subscription = await registration.pushManager.getSubscription();
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-      console.log("Cockpit Push: new subscription created");
-    } else {
-      console.log("Cockpit Push: using existing subscription");
+    // Always force a fresh subscription — unsubscribe any stale one first
+    // This ensures the token in the Sheet is always valid
+    const existing = await registration.pushManager.getSubscription();
+    if (existing) {
+      await existing.unsubscribe();
+      console.log("Cockpit Push: unsubscribed stale subscription");
     }
 
-    // Save the subscription object to the Sheet
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+    console.log("Cockpit Push: new subscription created");
+
+    // Save the fresh subscription object to the Sheet
     const subJson = JSON.stringify(subscription.toJSON());
     const res = await fetch(API_URL, {
       method: "POST",
       body: JSON.stringify({ action: "saveToken", name: userName, token: subJson }),
     });
     const data = await res.json();
-    console.log("Cockpit Push: subscription saved", data);
+    console.log("Cockpit Push: subscription saved", data, subscription);
     return subscription;
 
   } catch(err) {
