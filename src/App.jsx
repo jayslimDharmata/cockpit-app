@@ -40,14 +40,16 @@ const THEMES = {
     tabExtra: null,
   },
   halloween: {
-    accent: "#ff6a00",
-    accentDim: "#cc4400",
-    accentGlow: "rgba(255,106,0,0.35)",
-    bgTop: "#0d0800",
-    bgCard: "#1e1000",
-    bgCard2: "#2a1800",
-    neonColor: "#ff6a00",
-    dotColor: "#ff6a00",
+    accent: "#ff7700",
+    accentDim: "#cc5500",
+    accentGlow: "rgba(255,119,0,0.4)",
+    purple: "#9b30d0",
+    purpleGlow: "rgba(155,48,208,0.4)",
+    bgTop: "#0a0010",
+    bgCard: "#150820",
+    bgCard2: "#1e1030",
+    neonColor: "#ff7700",
+    dotColor: "#ff7700",
     label: "🎃",
     tabExtra: "🎃 Games",
   },
@@ -343,6 +345,19 @@ const batCSS = SEASON === "halloween" ? `
     content:''; position:absolute; top:-40px; left:50%; width:1px;
     background:rgba(255,106,0,0.3);
   }
+  .haunted-card {
+    position: relative;
+  }
+  .haunted-card::before, .haunted-card::after {
+    content: '🕸️';
+    position: absolute;
+    font-size: 20px;
+    opacity: 0.25;
+    pointer-events: none;
+    line-height: 1;
+  }
+  .haunted-card::before { top: 4px; left: 4px; }
+  .haunted-card::after  { top: 4px; right: 4px; transform: scaleX(-1); }
 ` : "";
 
 const leafCSS = SEASON === "thanksgiving" ? `
@@ -488,11 +503,12 @@ function SeasonalDecorations() {
 
 /* ─── HELPERS ────────────────────────────────────────── */
 function Label({ children, style={} }) {
+  const labelColor = SEASON === "halloween" ? T.purple : red;
   return (
     <div style={{
       fontSize:13, letterSpacing:3, textTransform:"uppercase",
-      color:red, marginBottom:12,
-      borderLeft:"3px solid "+red, paddingLeft:9,
+      color:labelColor, marginBottom:12,
+      borderLeft:`3px solid ${labelColor}`, paddingLeft:9,
       fontFamily:"'Oswald',sans-serif", fontWeight:600, ...style,
     }}>{children}</div>
   );
@@ -500,7 +516,7 @@ function Label({ children, style={} }) {
 
 function Card({ children, highlight=false, onClick, style={} }) {
   return (
-    <div onClick={onClick} style={{
+    <div onClick={onClick} className={SEASON==="halloween"?"haunted-card":""} style={{
       padding:"13px 15px", borderRadius:10, marginBottom:9,
       background:highlight ? `rgba(${SEASON==="halloween"?"255,102,0":"255,68,68"},0.12)` : bgCard,
       border:`1px solid ${highlight ? `rgba(${SEASON==="halloween"?"255,120,0":"255,80,80"},0.35)` : border}`,
@@ -520,8 +536,8 @@ function NamePicker({ onSelect, crew }) {
     <div style={{ background:bg, minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", padding:"40px 20px 30px", fontFamily:"'Oswald',sans-serif" }}>
       <style>{css}</style>
       <SeasonalDecorations />
-      <div style={{ position:"relative", zIndex:1, display:"inline-block", background:"#120404", border:"2px solid rgba(255,60,60,0.25)", borderRadius:14, padding:"12px 32px 16px", marginBottom:10, boxShadow:"0 0 40px rgba(255,30,30,0.25)" }}>
-        <div style={{ fontSize:9, letterSpacing:5, color:"rgba(255,120,120,0.45)", marginBottom:5, fontWeight:300, textAlign:"center" }}>✦ GARAGE BAR ✦</div>
+      <div style={{ position:"relative", zIndex:1, display:"inline-block", background:"#120404", border:`2px solid ${SEASON==="halloween"?"rgba(155,48,208,0.3)":"rgba(255,60,60,0.25)"}`, borderRadius:14, padding:"12px 32px 16px", marginBottom:10, boxShadow:"0 0 40px rgba(255,30,30,0.25)" }}>
+        <div style={{ fontSize:9, letterSpacing:5, color:SEASON==="halloween"?"rgba(155,80,220,0.7)":"rgba(255,120,120,0.45)", marginBottom:5, fontWeight:300, textAlign:"center" }}>{SEASON==="halloween"?"👻 HAUNTED BAR 👻":"✦ GARAGE BAR ✦"}</div>
         <div className="neon-title" style={{ fontSize:34, lineHeight:1.1, textAlign:"center" }}>The COCKpit</div>
         {T.label && <div style={{ textAlign:"center", fontSize:20, marginTop:4 }}>{T.label}</div>}
       </div>
@@ -1713,9 +1729,12 @@ export default function App() {
 
         {/* Seasonal top glow */}
         <div style={{ position:"fixed", top:-120, left:"50%", transform:"translateX(-50%)", width:400, height:260, borderRadius:"50%", pointerEvents:"none", zIndex:0, background:isOpen?`radial-gradient(ellipse,${T.accentGlow} 0%,transparent 70%)`:"none", transition:"background 1.2s ease" }} />
-        {/* Halloween ambient fog glow */}
+        {/* Halloween ambient fog glow — dual orange + purple */}
         {SEASON === "halloween" && (
-          <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"30vh", pointerEvents:"none", zIndex:0, background:"radial-gradient(ellipse at 50% 100%, rgba(255,80,0,0.08) 0%, transparent 70%)" }} />
+          <>
+            <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"30vh", pointerEvents:"none", zIndex:0, background:"radial-gradient(ellipse at 30% 100%, rgba(255,80,0,0.1) 0%, transparent 65%)" }} />
+            <div style={{ position:"fixed", bottom:0, left:0, right:0, height:"30vh", pointerEvents:"none", zIndex:0, background:"radial-gradient(ellipse at 70% 100%, rgba(155,48,208,0.12) 0%, transparent 65%)" }} />
+          </>
         )}
 
         {/* ── HEADER ── */}
@@ -1725,8 +1744,8 @@ export default function App() {
             <span style={{ fontSize:11, color:txt2, fontFamily:"'Oswald',sans-serif", letterSpacing:.5, fontWeight:500 }}>{myName}</span>
           </button>
 
-          <div style={{ display:"inline-block", background:"#120404", border:"2px solid rgba(255,50,50,0.2)", borderRadius:14, padding:"10px 28px 14px", marginBottom:14, boxShadow:isOpen?`0 0 36px ${T.accentGlow},inset 0 0 20px rgba(255,0,0,0.04)`:"none", transition:"box-shadow 1.2s ease" }}>
-            <div style={{ fontSize:9, letterSpacing:5, color:"rgba(255,120,120,0.4)", marginBottom:5, fontWeight:300 }}>✦ GARAGE BAR ✦ {T.label||""}</div>
+          <div style={{ display:"inline-block", background:"#120404", border:`2px solid ${SEASON==="halloween"?"rgba(155,48,208,0.3)":"rgba(255,50,50,0.2)"}`, borderRadius:14, padding:"10px 28px 14px", marginBottom:14, boxShadow:isOpen?`0 0 36px ${T.accentGlow},inset 0 0 20px rgba(255,0,0,0.04)`:"none", transition:"box-shadow 1.2s ease" }}>
+            <div style={{ fontSize:9, letterSpacing:5, color:SEASON==="halloween"?"rgba(155,80,220,0.7)":"rgba(255,120,120,0.4)", marginBottom:5, fontWeight:300 }}>{SEASON==="halloween"?"👻 HAUNTED BAR 👻":"✦ GARAGE BAR ✦"} {T.label||""}</div>
             <div className={isOpen?"neon-title":"dark-title"} style={{ fontSize:36, lineHeight:1.1 }}>The COCKpit</div>
           </div>
 
@@ -1763,8 +1782,15 @@ export default function App() {
         <div style={{ display:"flex", borderBottom:`1px solid ${border}`, position:"sticky", top:0, background:bg, zIndex:10, overflowX:"auto" }}>
           {tabs.map(tab=>(
             <button key={tab} onClick={()=>setActiveTab(tab)} style={{
-              flex:"1", padding:"13px 6px", background:"none", border:"none",
-              borderBottom:activeTab===tab?`2px solid ${red}`:"2px solid transparent",
+              flex:"1", padding:"13px 6px", background:"none",
+              border:"none",
+              borderBottom: SEASON==="halloween" && activeTab===tab
+                ? "2px solid transparent"
+                : activeTab===tab ? `2px solid ${red}` : "2px solid transparent",
+              backgroundImage: SEASON==="halloween" && activeTab===tab
+                ? `linear-gradient(${bg},${bg}) padding-box, linear-gradient(to right,#ff7700,#9b30d0) border-box`
+                : "none",
+              backgroundClip: SEASON==="halloween" && activeTab===tab ? "padding-box, border-box" : "border-box",
               color:activeTab===tab?txt:txt3,
               fontSize:tab.length > 6 ? 9 : 11,
               letterSpacing:.5, textTransform:"uppercase",
@@ -1902,6 +1928,7 @@ export default function App() {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
                         <span style={{ fontSize:16, color:txt, fontWeight:700 }}>{m.name}</span>
+                        {cin && SEASON==="halloween" && <span style={{ fontSize:14 }}>👻</span>}
                         {isHostMember && <span style={{ fontSize:8, color:red, background:"rgba(255,68,68,0.15)", padding:"2px 6px", borderRadius:3, letterSpacing:1 }}>HOST</span>}
                         {m.name==="Rashawn" && <span style={{ fontSize:8, color:"#c85a28", background:"rgba(200,90,40,0.15)", padding:"2px 6px", borderRadius:3, letterSpacing:1 }}>SMOKE MASTER</span>}
                       </div>
