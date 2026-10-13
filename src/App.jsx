@@ -881,7 +881,7 @@ function RecsTab({ recs, myName, isHost, onAdd, onDelete, onEdit }) {
                     </a>
                   )}
                   <div style={{ fontSize:11, color:dim, marginTop:6 }}>
-                    {rec.name} · {rec.date}
+                    {rec.name} · {rec.date ? (() => { try { const d = new Date(rec.date); return isNaN(d) ? rec.date : d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); } catch(e) { return rec.date; } })() : ""}
                   </div>
                 </div>
                 <div style={{ display:"flex", gap:6, flexShrink:0 }}>
