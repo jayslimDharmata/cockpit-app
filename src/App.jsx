@@ -435,6 +435,50 @@ const css = `
     50%{ transform:scale(1.4); color:${T.accent}; }
     100%{ transform:scale(1); }
   }
+  @keyframes jolFlicker {
+    0%,100%{ opacity:1; } 7%{ opacity:0; } 8%{ opacity:1; } 15%{ opacity:.7; } 16%{ opacity:1; }
+  }
+  @keyframes jolGlow {
+    0%,100%{ text-shadow:0 0 20px #ff7700, 0 0 60px #ff5500, 0 0 100px #ff3300; }
+    50%{ text-shadow:0 0 40px #ff9900, 0 0 80px #ff6600, 0 0 140px #ff4400; }
+  }
+  @keyframes jolRise {
+    from{ opacity:0; transform:translateY(24px) scale(.85); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  @keyframes jumpFlash {
+    0%{ opacity:0; } 5%{ opacity:1; } 90%{ opacity:1; } 100%{ opacity:0; }
+  }
+  @keyframes jumpSlam {
+    0%{ transform:scale(0.2) rotate(-8deg); opacity:0; }
+    15%{ transform:scale(1.35) rotate(4deg); opacity:1; }
+    25%{ transform:scale(0.95) rotate(-2deg); }
+    35%{ transform:scale(1.08) rotate(1deg); }
+    45%,100%{ transform:scale(1) rotate(0deg); opacity:1; }
+  }
+  @keyframes jumpShake {
+    0%,100%{ transform:translateX(0); }
+    10%{ transform:translateX(-14px) rotate(-3deg); }
+    20%{ transform:translateX(14px) rotate(3deg); }
+    30%{ transform:translateX(-10px); }
+    40%{ transform:translateX(10px); }
+    50%{ transform:translateX(-6px); }
+    60%{ transform:translateX(6px); }
+    70%,90%{ transform:translateX(-3px); }
+    80%{ transform:translateX(3px); }
+  }
+  @keyframes cursedPulse {
+    0%,100%{ box-shadow:0 0 8px 2px rgba(200,0,0,0.5), 0 0 24px 4px rgba(200,0,0,0.2); }
+    50%{ box-shadow:0 0 18px 6px rgba(255,30,0,0.7), 0 0 40px 10px rgba(200,0,0,0.3); }
+  }
+  @keyframes cursedWobble {
+    0%,100%{ transform:rotate(0deg); }
+    20%{ transform:rotate(-1.5deg); }
+    40%{ transform:rotate(1.5deg); }
+    60%{ transform:rotate(-1deg); }
+    80%{ transform:rotate(1deg); }
+  }
+  .cursed-btn{ animation:cursedPulse 1.8s ease-in-out infinite, cursedWobble 2.4s ease-in-out infinite; }
 
   html,body{ margin:0; padding:0; background:${bg}; font-size:16px; }
   * { -webkit-text-size-adjust: 100%; }
@@ -1087,6 +1131,80 @@ function ScheduleOpening({ scheduledTime, onSet }) {
   );
 }
 
+/* ─── JACK-O-LANTERN LOADER ──────────────────────────── */
+function JackOLanternLoader() {
+  const [step, setStep] = useState(0);
+  // 0=dark, 1=eyes, 2=nose, 3=mouth+glow, 4=title
+  useEffect(() => {
+    const timings = [
+      [600,  1],
+      [1300, 2],
+      [2100, 3],
+      [3000, 4],
+    ];
+    const timers = timings.map(([ms, s]) => setTimeout(() => setStep(s), ms));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  // Build pumpkin face using layered spans
+  const eyes   = step >= 1;
+  const nose   = step >= 2;
+  const mouth  = step >= 3;
+
+  return (
+    <div style={{ background:bg, minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'Oswald',sans-serif", overflow:"hidden" }}>
+      <style>{css}</style>
+      <div style={{ position:"relative", width:140, height:140, marginBottom:24 }}>
+        {/* Pumpkin body */}
+        <div style={{
+          fontSize:120, lineHeight:1, textAlign:"center",
+          filter: mouth ? "drop-shadow(0 0 24px #ff6600) drop-shadow(0 0 48px #ff4400)" : "none",
+          animation: mouth ? "jolFlicker 6s infinite" : "none",
+          transition:"filter 0.6s ease",
+          userSelect:"none",
+        }}>🎃</div>
+
+        {/* Eye glow overlay */}
+        {eyes && (
+          <div style={{
+            position:"absolute", top:"38%", left:"50%", transform:"translateX(-50%)",
+            display:"flex", gap:22, pointerEvents:"none",
+            animation:"jolGlow 2s ease-in-out infinite",
+          }}>
+            <div style={{ width:14, height:12, background:"#ff7700", borderRadius:"2px 2px 0 0", boxShadow:"0 0 10px #ff5500, 0 0 24px #ff3300", opacity:0.9 }} />
+            <div style={{ width:14, height:12, background:"#ff7700", borderRadius:"2px 2px 0 0", boxShadow:"0 0 10px #ff5500, 0 0 24px #ff3300", opacity:0.9 }} />
+          </div>
+        )}
+
+        {/* Nose glow */}
+        {nose && (
+          <div style={{
+            position:"absolute", top:"55%", left:"50%", transform:"translateX(-50%)",
+            width:8, height:8, background:"#ff7700", clipPath:"polygon(50% 0%,100% 100%,0% 100%)",
+            boxShadow:"0 0 8px #ff5500, 0 0 18px #ff3300",
+            animation:"jolGlow 2s ease-in-out infinite",
+            pointerEvents:"none",
+          }} />
+        )}
+      </div>
+
+      {step >= 4 && (
+        <div style={{ textAlign:"center", animation:"jolRise 0.6s ease forwards" }}>
+          <div style={{ fontSize:9, letterSpacing:5, color:"rgba(155,80,220,0.7)", marginBottom:6, fontWeight:300 }}>👻 HAUNTED BAR 👻</div>
+          <div className="neon-title" style={{ fontSize:36 }}>The COCKpit</div>
+          <div style={{ color:"#555", fontSize:11, letterSpacing:3, marginTop:16 }}><span className="spinner">⟳</span></div>
+        </div>
+      )}
+
+      {step < 4 && (
+        <div style={{ color:"#333", fontSize:11, letterSpacing:4, marginTop:8, fontFamily:"'Share Tech Mono',monospace" }}>
+          {step === 0 ? "..." : step === 1 ? "it sees you..." : step === 2 ? "it knows..." : "it's ready."}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── CLAP LOADER ────────────────────────────────────── */
 function ClapLoader() {
   const [phase, setPhase] = useState(0);
@@ -1421,6 +1539,89 @@ function CockpitTrivia() {
   );
 }
 
+/* ─── JUMPSCARE BUTTON ───────────────────────────────── */
+function NeverPressButton() {
+  const [phase, setPhase] = useState("idle"); // idle | scared | recovering
+
+  const SCARE_MESSAGES = [
+    "YOU HAVE BEEN CURSED",
+    "IT'S ALREADY BEHIND YOU",
+    "THE BAR IS HAUNTED NOW",
+    "TOO LATE. IT'S AWAKE.",
+    "YOU SHOULDN'T HAVE DONE THAT",
+  ];
+
+  const [msg] = useState(() => SCARE_MESSAGES[Math.floor(Math.random() * SCARE_MESSAGES.length)]);
+  const [currentMsg, setCurrentMsg] = useState(msg);
+
+  const press = () => {
+    if (phase !== "idle") return;
+    setCurrentMsg(SCARE_MESSAGES[Math.floor(Math.random() * SCARE_MESSAGES.length)]);
+    setPhase("scared");
+    setTimeout(() => setPhase("recovering"), 2200);
+    setTimeout(() => setPhase("idle"), 3000);
+  };
+
+  return (
+    <div style={{ position:"relative" }}>
+      {/* Jumpscare overlay */}
+      {phase === "scared" && (
+        <div style={{
+          position:"fixed", inset:0, zIndex:9999,
+          background:"#0a0000",
+          display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center",
+          animation:"jumpFlash 2.2s ease forwards",
+          pointerEvents:"none",
+        }}>
+          <div style={{
+            fontSize:140, lineHeight:1,
+            animation:"jumpSlam 0.6s cubic-bezier(0.36,0.07,0.19,0.97) forwards, jumpShake 0.5s ease 0.15s",
+            filter:"drop-shadow(0 0 40px #ff0000) drop-shadow(0 0 80px #aa0000)",
+          }}>💀</div>
+          <div style={{
+            fontFamily:"'Oswald',sans-serif",
+            fontSize:22, letterSpacing:6, fontWeight:900,
+            color:"#cc0000", marginTop:16,
+            textShadow:"0 0 20px #ff0000, 0 0 40px #aa0000",
+            textTransform:"uppercase",
+            animation:"jumpShake 0.4s ease 0.3s",
+          }}>{currentMsg}</div>
+        </div>
+      )}
+
+      <div style={{ textAlign:"center", padding:"12px 0 4px" }}>
+        <div style={{ fontSize:11, color:"#550000", letterSpacing:3, marginBottom:14, fontFamily:"'Share Tech Mono',monospace" }}>
+          ⚠ DO NOT PROCEED ⚠
+        </div>
+        <button
+          onClick={press}
+          className={phase==="idle"?"cursed-btn":""}
+          style={{
+            padding:"18px 28px",
+            background:"linear-gradient(135deg,#1a0000,#2d0000)",
+            border:"2px solid #8b0000",
+            borderRadius:12,
+            color:"#ff3333",
+            fontSize:17,
+            letterSpacing:1,
+            fontFamily:"'Oswald',sans-serif",
+            fontWeight:700,
+            cursor:"pointer",
+            width:"100%",
+            transition:"opacity .2s",
+            opacity: phase !== "idle" ? 0.4 : 1,
+          }}>
+          ☠️ Never EVER Press This Button ☠️
+        </button>
+        <div style={{ fontSize:10, color:"#330000", marginTop:10, letterSpacing:2, fontFamily:"'Share Tech Mono',monospace" }}>
+          seriously. don't.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── HALLOWEEN GAMES TAB ────────────────────────────── */
 function HalloweenGamesTab() {
   const [game, setGame] = useState(null);
@@ -1471,6 +1672,11 @@ function HalloweenGamesTab() {
             <div style={{ marginLeft:"auto", fontSize:20, color:dim }}>›</div>
           </div>
         </button>
+
+        {/* The forbidden button */}
+        <div style={{ marginTop:4 }}>
+          <NeverPressButton />
+        </div>
       </div>
     </div>
   );
@@ -1666,7 +1872,7 @@ export default function App() {
     return <NamePicker onSelect={handleSelectName} crew={crew} />;
   }
 
-  if (loading) return <ClapLoader />;
+  if (loading) return SEASON === "halloween" ? <JackOLanternLoader /> : <ClapLoader />;
 
   if (error) return (
     <div style={{ background:bg, minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12, fontFamily:"'Oswald',sans-serif", padding:24 }}>
@@ -1830,7 +2036,9 @@ export default function App() {
                 boxShadow:myCheckedIn?`0 0 20px ${T.accentGlow}`:"none",
                 transition:"all .2s", cursor:"pointer",
               }}>
-                {actionLoading?"...":myCheckedIn?"You're Inside — Tap to Leave":"Tap to Check In"}
+                {actionLoading?"...":myCheckedIn
+                  ? SEASON==="halloween" ? "You're Inside — Tap to Flee 👻" : "You're Inside — Tap to Leave"
+                  : SEASON==="halloween" ? "Enter if You Dare →" : "Tap to Check In"}
               </button>
 
               {/* Quick Actions */}
@@ -1996,7 +2204,9 @@ export default function App() {
 
         {/* Footer */}
         <div style={{ height:44, borderTop:`1px solid ${border}`, display:"flex", alignItems:"center", justifyContent:"center", color:dim, fontSize:9, letterSpacing:4, textTransform:"uppercase", fontWeight:300 }}>
-          Members Only · All Roads Lead to Happy Hour {T.label||""}
+          {SEASON==="halloween"
+            ? "Members Only · All Ghouls Lead to Happy Hour 🎃"
+            : `Members Only · All Roads Lead to Happy Hour ${T.label||""}`}
         </div>
       </div>
     </>
