@@ -1784,14 +1784,15 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
     setDeleting(null);
   };
 
-  // Sort by next occurrence
+  // Sort by next occurrence; events with no computed next date go to the bottom
   const enriched = calEvents
     .map(ev => ({ ...ev, nextDate: getNextOccurrence(ev.date, ev.recurring) }))
-    .filter(ev => ev.nextDate !== null)
-    .sort((a,b) => a.nextDate - b.nextDate);
-
-  // Past one-time events (no nextDate)
-  const past = calEvents.filter(ev => getNextOccurrence(ev.date, ev.recurring) === null);
+    .sort((a,b) => {
+      if (!a.nextDate && !b.nextDate) return 0;
+      if (!a.nextDate) return 1;
+      if (!b.nextDate) return -1;
+      return a.nextDate - b.nextDate;
+    });
 
   const inputStyle = {
     width:"100%", background:"rgba(255,255,255,0.07)",
@@ -1912,7 +1913,7 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
       )}
 
       {/* Chronological list */}
-      {enriched.length === 0 && !showForm && (
+      {calEvents.length === 0 && !showForm && (
         <div style={{ textAlign:"center", padding:"32px 16px", color:dim, fontSize:13 }}>
           No dates yet — tap + Add to get started
         </div>
@@ -1957,30 +1958,6 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
         );
       })}
 
-      {/* Past one-time events */}
-      {past.length > 0 && (
-        <div style={{ marginTop:16 }}>
-          <div style={{ fontSize:10, color:dim, letterSpacing:3, marginBottom:10, fontFamily:"'Oswald',sans-serif" }}>PAST</div>
-          {past.map(ev => {
-            const cat = CAL_CATEGORIES[ev.category] || CAL_CATEGORIES.Other;
-            return (
-              <div key={ev.id} style={{ display:"flex", alignItems:"stretch", borderRadius:10, marginBottom:6, overflow:"hidden", border:`1px solid ${border}`, opacity:0.45 }}>
-                <div style={{ width:4, background:cat.color, flexShrink:0 }} />
-                <div style={{ flex:1, padding:"10px 14px", display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontSize:22 }}>{cat.icon}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:14, color:txt2, fontWeight:600 }}>{ev.name}</div>
-                    <div style={{ fontSize:11, color:dim }}>{(parseCalDate(ev.date)||new Date()).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>
-                  </div>
-                  <button onClick={()=>handleDelete(ev)} disabled={deleting===ev.id} style={{ background:"rgba(255,50,50,0.08)", border:"1px solid rgba(255,80,80,0.2)", borderRadius:5, padding:"3px 8px", color:red, fontSize:11, cursor:"pointer" }}>
-                    {deleting===ev.id?"...":"✕"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
