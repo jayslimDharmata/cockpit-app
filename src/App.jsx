@@ -1690,11 +1690,38 @@ const CAL_CATEGORIES = {
   Other:             { color:"#9b8ec4", icon:"📌", label:"Other" },
 };
 
+function parseCalDate(dateStr) {
+  if (!dateStr) return null;
+  const s = String(dateStr).trim();
+  // Google Sheets serial number (days since Dec 30, 1899)
+  if (/^\d{4,6}$/.test(s)) {
+    const serial = parseInt(s);
+    const d = new Date((serial - 25569) * 86400000 + 12 * 3600000);
+    if (!isNaN(d)) return d;
+  }
+  // ISO format YYYY-MM-DD (from date input)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = new Date(s + "T12:00:00");
+    if (!isNaN(d)) return d;
+  }
+  // M/D/YYYY or MM/DD/YYYY (Google Sheets display format)
+  const slash = s.split("/");
+  if (slash.length === 3) {
+    const yr = parseInt(slash[2]);
+    const d = new Date(yr < 100 ? yr + 2000 : yr, parseInt(slash[0])-1, parseInt(slash[1]), 12, 0, 0);
+    if (!isNaN(d)) return d;
+  }
+  // Last resort — let the browser try
+  const fallback = new Date(s);
+  if (!isNaN(fallback)) return fallback;
+  return null;
+}
+
 function getNextOccurrence(dateStr, recurring) {
   if (!dateStr) return null;
   const today = new Date(); today.setHours(0,0,0,0);
-  const base = new Date(dateStr + "T12:00:00");
-  if (isNaN(base)) return null;
+  const base = parseCalDate(dateStr);
+  if (!base) return null;
   if (!recurring || (recurring !== "TRUE" && recurring !== true)) {
     return base >= today ? base : null;
   }
@@ -1713,6 +1740,7 @@ function daysUntil(date) {
 
 function fmtCalDate(date, recurring) {
   if (!date) return "";
+  if (!(date instanceof Date) || isNaN(date)) return "";
   const opts = { month:"long", day:"numeric" };
   if (!recurring || (recurring !== "TRUE" && recurring !== true)) opts.year = "numeric";
   return date.toLocaleDateString("en-US", opts);
@@ -1942,7 +1970,7 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
                   <span style={{ fontSize:22 }}>{cat.icon}</span>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:14, color:txt2, fontWeight:600 }}>{ev.name}</div>
-                    <div style={{ fontSize:11, color:dim }}>{new Date(ev.date+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>
+                    <div style={{ fontSize:11, color:dim }}>{(parseCalDate(ev.date)||new Date()).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>
                   </div>
                   <button onClick={()=>handleDelete(ev)} disabled={deleting===ev.id} style={{ background:"rgba(255,50,50,0.08)", border:"1px solid rgba(255,80,80,0.2)", borderRadius:5, padding:"3px 8px", color:red, fontSize:11, cursor:"pointer" }}>
                     {deleting===ev.id?"...":"✕"}
@@ -1998,7 +2026,7 @@ export default function App() {
       if (tonightRes.tonight)     setTonight(tonightRes.tonight);
       if (eventsRes.events)       setEvents(eventsRes.events);
       if (reviewsRes.reviews)     setReviews(reviewsRes.reviews);
-      if (calRes.events)          setCalendarEvents(calRes.events);
+      if (calRes.events)          { console.log("Cockpit calendar:", JSON.stringify(calRes.events)); setCalendarEvents(calRes.events); }
       setError(null);
     } catch(e) {
       setError("Couldn't reach The Cockpit. Check your connection.");
