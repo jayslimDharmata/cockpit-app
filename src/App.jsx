@@ -1893,27 +1893,31 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
         </div>
       )}
 
-      {/* Coming up strip */}
-      {enriched.length > 0 && (
-        <div style={{ background:bgCard2, borderRadius:10, padding:"12px 14px", marginBottom:16, border:`1px solid rgba(255,255,255,0.08)` }}>
-          <div style={{ fontSize:10, color:txt3, letterSpacing:3, marginBottom:10, fontFamily:"'Oswald',sans-serif", fontWeight:600 }}>COMING UP</div>
-          {enriched.slice(0,3).map((ev,i) => {
-            const cat = CAL_CATEGORIES[ev.category] || CAL_CATEGORIES.Other;
-            const days = daysUntil(ev.nextDate);
-            return (
-              <div key={ev.id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom: i<2?8:0 }}>
-                <span style={{ fontSize:18 }}>{cat.icon}</span>
-                <span style={{ fontSize:14, color:txt, fontWeight:600, flex:1 }}>{ev.name}</span>
-                <span style={{ fontSize:12, color:cat.color, fontWeight:700 }}>
-                  {days===null?"—":days===0?"Today!":days===1?"Tomorrow":`${days}d`}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Coming up this month strip */}
+      {(() => {
+        const soon = enriched.filter(ev => ev.nextDate && daysUntil(ev.nextDate) !== null && daysUntil(ev.nextDate) <= 31);
+        if (!soon.length) return null;
+        return (
+          <div style={{ background:bgCard2, borderRadius:10, padding:"12px 14px", marginBottom:16, border:`1px solid rgba(255,255,255,0.08)` }}>
+            <div style={{ fontSize:10, color:txt3, letterSpacing:3, marginBottom:10, fontFamily:"'Oswald',sans-serif", fontWeight:600 }}>COMING UP</div>
+            {soon.map((ev,i) => {
+              const cat = CAL_CATEGORIES[ev.category] || CAL_CATEGORIES.Other;
+              const days = daysUntil(ev.nextDate);
+              return (
+                <div key={ev.id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom: i<soon.length-1?8:0 }}>
+                  <span style={{ fontSize:18 }}>{cat.icon}</span>
+                  <span style={{ fontSize:14, color:txt, fontWeight:600, flex:1 }}>{ev.name}</span>
+                  <span style={{ fontSize:12, color:cat.color, fontWeight:700 }}>
+                    {days===0?"Today!":days===1?"Tomorrow":fmtCalDate(ev.nextDate, true)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
-      {/* Chronological list */}
+      {/* Full chronological list */}
       {calEvents.length === 0 && !showForm && (
         <div style={{ textAlign:"center", padding:"32px 16px", color:dim, fontSize:13 }}>
           No dates yet — tap + Add to get started
@@ -1922,16 +1926,12 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
 
       {enriched.map(ev => {
         const cat = CAL_CATEGORIES[ev.category] || CAL_CATEGORIES.Other;
-        const days = daysUntil(ev.nextDate);
-        const isRecurring = ev.recurring==="TRUE"||ev.recurring===true;
-        const isSoon = days !== null && days <= 7;
+        const isRecurring = ev.recurring==="TRUE"||ev.recurring===true||String(ev.recurring).toUpperCase()==="TRUE";
         return (
           <div key={ev.id} style={{
             display:"flex", alignItems:"stretch", borderRadius:10, marginBottom:8, overflow:"hidden",
-            border:`1px solid ${isSoon ? cat.color+"55" : border}`,
-            background: isSoon ? `${cat.color}11` : bgCard,
+            border:`1px solid ${border}`, background:bgCard,
           }}>
-            {/* Color strip */}
             <div style={{ width:4, background:cat.color, flexShrink:0 }} />
             <div style={{ flex:1, padding:"12px 14px", display:"flex", alignItems:"center", gap:12 }}>
               <span style={{ fontSize:26, flexShrink:0 }}>{cat.icon}</span>
@@ -1943,16 +1943,11 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
                 <div style={{ fontSize:12, color:txt3, marginTop:2 }}>{fmtCalDate(ev.nextDate, isRecurring)}</div>
                 {ev.notes && <div style={{ fontSize:11, color:dim, marginTop:2 }}>{ev.notes}</div>}
               </div>
-              <div style={{ textAlign:"right", flexShrink:0 }}>
-                <div style={{ fontSize:14, color:isSoon?cat.color:txt2, fontWeight:700 }}>
-                  {days===null?"—":days===0?"Today!":days===1?"Tomorrow":`${days}d`}
-                </div>
-                <div style={{ display:"flex", gap:6, marginTop:6, justifyContent:"flex-end" }}>
-                  <button onClick={()=>openEdit(ev)} style={{ background:"rgba(255,255,255,0.06)", border:`1px solid ${border}`, borderRadius:5, padding:"3px 8px", color:txt3, fontSize:11, cursor:"pointer" }}>Edit</button>
-                  <button onClick={()=>handleDelete(ev)} disabled={deleting===ev.id} style={{ background:"rgba(255,50,50,0.08)", border:"1px solid rgba(255,80,80,0.2)", borderRadius:5, padding:"3px 8px", color:red, fontSize:11, cursor:"pointer" }}>
-                    {deleting===ev.id?"...":"✕"}
-                  </button>
-                </div>
+              <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
+                <button onClick={()=>openEdit(ev)} style={{ background:"rgba(255,255,255,0.06)", border:`1px solid ${border}`, borderRadius:5, padding:"3px 8px", color:txt3, fontSize:11, cursor:"pointer" }}>Edit</button>
+                <button onClick={()=>handleDelete(ev)} disabled={deleting===ev.id} style={{ background:"rgba(255,50,50,0.08)", border:"1px solid rgba(255,80,80,0.2)", borderRadius:5, padding:"3px 8px", color:red, fontSize:11, cursor:"pointer" }}>
+                  {deleting===ev.id?"...":"✕"}
+                </button>
               </div>
             </div>
           </div>
