@@ -1722,7 +1722,8 @@ function getNextOccurrence(dateStr, recurring) {
   const today = new Date(); today.setHours(0,0,0,0);
   const base = parseCalDate(dateStr);
   if (!base) return null;
-  if (!recurring || (recurring !== "TRUE" && recurring !== true)) {
+  const isRec = recurring === true || String(recurring).toUpperCase() === "TRUE";
+  if (!isRec) {
     return base >= today ? base : null;
   }
   // Recurring: find next occurrence this year or next
@@ -1904,7 +1905,7 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
                 <span style={{ fontSize:18 }}>{cat.icon}</span>
                 <span style={{ fontSize:14, color:txt, fontWeight:600, flex:1 }}>{ev.name}</span>
                 <span style={{ fontSize:12, color:cat.color, fontWeight:700 }}>
-                  {days===0?"Today!":days===1?"Tomorrow":`${days}d`}
+                  {days===null?"—":days===0?"Today!":days===1?"Tomorrow":`${days}d`}
                 </span>
               </div>
             );
@@ -1944,7 +1945,7 @@ function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
               </div>
               <div style={{ textAlign:"right", flexShrink:0 }}>
                 <div style={{ fontSize:14, color:isSoon?cat.color:txt2, fontWeight:700 }}>
-                  {days===0?"Today!":days===1?"Tomorrow":`${days}d`}
+                  {days===null?"—":days===0?"Today!":days===1?"Tomorrow":`${days}d`}
                 </div>
                 <div style={{ display:"flex", gap:6, marginTop:6, justifyContent:"flex-end" }}>
                   <button onClick={()=>openEdit(ev)} style={{ background:"rgba(255,255,255,0.06)", border:`1px solid ${border}`, borderRadius:5, padding:"3px 8px", color:txt3, fontSize:11, cursor:"pointer" }}>Edit</button>
@@ -2338,7 +2339,7 @@ export default function App() {
                           <div style={{ flex:1 }}>
                             <div style={{ fontSize:14, color:txt, fontWeight:700 }}>{ev.name}</div>
                             <div style={{ fontSize:11, color:cat.color, marginTop:1 }}>
-                              {days===0?"Today!":days===1?"Tomorrow":`In ${days} days`} · {fmtCalDate(ev.nextDate, ev.recurring==="TRUE"||ev.recurring===true)}
+                              {days===null?"—":days===0?"Today!":days===1?"Tomorrow":`In ${days} days`} · {fmtCalDate(ev.nextDate, ev.recurring==="TRUE"||ev.recurring===true)}
                             </div>
                           </div>
                           <span style={{ fontSize:10, color:cat.color, letterSpacing:1, fontFamily:"'Oswald',sans-serif", fontWeight:600 }}>↗</span>
