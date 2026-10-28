@@ -2315,7 +2315,7 @@ export default function App() {
               {(() => {
                 const soon = calendarEvents
                   .map(ev => ({ ...ev, nextDate: getNextOccurrence(ev.date, ev.recurring) }))
-                  .filter(ev => ev.nextDate !== null && daysUntil(ev.nextDate) >= 0 && daysUntil(ev.nextDate) <= 7)
+                  .filter(ev => ev.nextDate !== null && daysUntil(ev.nextDate) >= 0 && daysUntil(ev.nextDate) <= 31)
                   .sort((a,b) => a.nextDate - b.nextDate);
                 if (!soon.length) return null;
                 return (
