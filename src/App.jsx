@@ -1682,17 +1682,293 @@ function HalloweenGamesTab() {
   );
 }
 
+/* ─── CALENDAR TAB ───────────────────────────────────── */
+const CAL_CATEGORIES = {
+  Birthday:          { color:"#f5c842", icon:"🎂", label:"Birthday" },
+  Anniversary:       { color:"#e87a90", icon:"💍", label:"Anniversary" },
+  "Permit Inspection":{ color:"#5b9bd5", icon:"🔧", label:"Permit" },
+  Other:             { color:"#9b8ec4", icon:"📌", label:"Other" },
+};
+
+function getNextOccurrence(dateStr, recurring) {
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const base = new Date(dateStr + "T12:00:00");
+  if (isNaN(base)) return null;
+  if (!recurring || (recurring !== "TRUE" && recurring !== true)) {
+    return base >= today ? base : null;
+  }
+  // Recurring: find next occurrence this year or next
+  const thisYear = new Date(base); thisYear.setFullYear(today.getFullYear());
+  if (thisYear >= today) return thisYear;
+  const nextYear = new Date(base); nextYear.setFullYear(today.getFullYear() + 1);
+  return nextYear;
+}
+
+function daysUntil(date) {
+  if (!date) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((date - today) / 86400000);
+}
+
+function fmtCalDate(date, recurring) {
+  if (!date) return "";
+  const opts = { month:"long", day:"numeric" };
+  if (!recurring || (recurring !== "TRUE" && recurring !== true)) opts.year = "numeric";
+  return date.toLocaleDateString("en-US", opts);
+}
+
+function CalendarTab({ calEvents, myName, onAdd, onEdit, onDelete }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [draft, setDraft] = useState({ category:"Birthday", name:"", date:"", notes:"", recurring:true });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+
+  const openAdd = () => {
+    setEditTarget(null);
+    setDraft({ category:"Birthday", name:"", date:"", notes:"", recurring:true });
+    setShowForm(true);
+  };
+
+  const openEdit = (ev) => {
+    setEditTarget(ev);
+    setDraft({ category:ev.category, name:ev.name, date:ev.date, notes:ev.notes||"", recurring:ev.recurring==="TRUE"||ev.recurring===true });
+    setShowForm(true);
+  };
+
+  const submit = async () => {
+    if (!draft.name.trim() || !draft.date) return;
+    setSaving(true);
+    if (editTarget) {
+      await onEdit({ ...draft, id:editTarget.id, addedBy:editTarget.addedBy });
+    } else {
+      await onAdd({ ...draft, addedBy:myName });
+    }
+    setSaving(false);
+    setShowForm(false);
+    setEditTarget(null);
+  };
+
+  const handleDelete = async (ev) => {
+    setDeleting(ev.id);
+    await onDelete(ev.id);
+    setDeleting(null);
+  };
+
+  // Sort by next occurrence
+  const enriched = calEvents
+    .map(ev => ({ ...ev, nextDate: getNextOccurrence(ev.date, ev.recurring) }))
+    .filter(ev => ev.nextDate !== null)
+    .sort((a,b) => a.nextDate - b.nextDate);
+
+  // Past one-time events (no nextDate)
+  const past = calEvents.filter(ev => getNextOccurrence(ev.date, ev.recurring) === null);
+
+  const inputStyle = {
+    width:"100%", background:"rgba(255,255,255,0.07)",
+    border:`1px solid rgba(255,255,255,0.15)`, borderRadius:7,
+    padding:"10px 12px", color:txt, fontSize:14,
+    fontFamily:"'Oswald',sans-serif", outline:"none", marginBottom:10,
+  };
+
+  return (
+    <div>
+      {/* Header row */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+        <Label style={{ margin:0 }}>Important Dates</Label>
+        <button onClick={openAdd} style={{
+          background:`rgba(255,68,68,0.12)`, border:`1px solid rgba(255,80,80,0.3)`,
+          borderRadius:6, padding:"5px 12px", color:red,
+          fontSize:10, letterSpacing:2, textTransform:"uppercase",
+          fontFamily:"'Oswald',sans-serif", fontWeight:600, cursor:"pointer",
+        }}>+ Add</button>
+      </div>
+
+      {/* Add/Edit form */}
+      {showForm && (
+        <div style={{ background:bgCard2, border:`1px solid rgba(255,255,255,0.12)`, borderRadius:12, padding:16, marginBottom:16 }}>
+          <div style={{ fontSize:10, color:red, letterSpacing:2, marginBottom:12, fontFamily:"'Oswald',sans-serif", fontWeight:600 }}>
+            {editTarget ? "EDIT DATE" : "NEW DATE"}
+          </div>
+
+          {/* Category chips */}
+          <div style={{ fontSize:10, color:txt3, letterSpacing:1, marginBottom:8 }}>CATEGORY</div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {Object.entries(CAL_CATEGORIES).map(([key, cat]) => (
+              <button key={key} onClick={()=>setDraft(d=>({...d, category:key, recurring:key==="Birthday"||key==="Anniversary"}))} style={{
+                padding:"6px 12px", borderRadius:20,
+                background: draft.category===key ? `${cat.color}22` : "rgba(255,255,255,0.05)",
+                border: `1px solid ${draft.category===key ? cat.color : "rgba(255,255,255,0.1)"}`,
+                color: draft.category===key ? cat.color : txt3,
+                fontSize:12, fontFamily:"'Oswald',sans-serif", fontWeight:600,
+                cursor:"pointer", letterSpacing:.5,
+              }}>{cat.icon} {key}</button>
+            ))}
+          </div>
+
+          <div style={{ fontSize:10, color:txt3, letterSpacing:1, marginBottom:5 }}>NAME</div>
+          <input value={draft.name} onChange={e=>setDraft(d=>({...d,name:e.target.value}))}
+            placeholder={draft.category==="Birthday"?"e.g. Garrett's Birthday":draft.category==="Anniversary"?"e.g. John & Melissa":"e.g. Annual Permit Renewal"}
+            style={inputStyle} />
+
+          <div style={{ fontSize:10, color:txt3, letterSpacing:1, marginBottom:5 }}>DATE</div>
+          <input type="date" value={draft.date} onChange={e=>setDraft(d=>({...d,date:e.target.value}))}
+            style={{ ...inputStyle, colorScheme:"dark" }} />
+
+          <div style={{ fontSize:10, color:txt3, letterSpacing:1, marginBottom:5 }}>NOTES (optional)</div>
+          <input value={draft.notes} onChange={e=>setDraft(d=>({...d,notes:e.target.value}))}
+            placeholder="Any extra info..."
+            style={inputStyle} />
+
+          {/* Recurring toggle */}
+          <div onClick={()=>setDraft(d=>({...d,recurring:!d.recurring}))} style={{
+            display:"flex", alignItems:"center", gap:10, marginBottom:14, cursor:"pointer",
+          }}>
+            <div style={{
+              width:38, height:22, borderRadius:11, position:"relative",
+              background: draft.recurring ? red : "rgba(255,255,255,0.1)",
+              border:`1px solid ${draft.recurring ? red : "rgba(255,255,255,0.2)"}`,
+              transition:"background .2s",
+              flexShrink:0,
+            }}>
+              <div style={{
+                position:"absolute", top:3, left: draft.recurring ? 17 : 3,
+                width:14, height:14, borderRadius:"50%", background:"#fff",
+                transition:"left .2s",
+              }} />
+            </div>
+            <span style={{ fontSize:13, color:draft.recurring?txt:txt3, fontFamily:"'Oswald',sans-serif" }}>
+              Repeats yearly {draft.recurring ? "✓" : ""}
+            </span>
+          </div>
+
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={submit} disabled={saving||!draft.name.trim()||!draft.date} style={{
+              flex:1, padding:"11px",
+              background:"rgba(255,50,50,0.2)", border:"1px solid rgba(255,80,80,0.45)",
+              borderRadius:7, color:txt, fontSize:12, letterSpacing:2,
+              textTransform:"uppercase", fontFamily:"'Oswald',sans-serif",
+              fontWeight:700, cursor:"pointer",
+              opacity:(!draft.name.trim()||!draft.date)?0.4:1,
+            }}>{saving?"Saving...":editTarget?"Save Changes":"Add Date"}</button>
+            <button onClick={()=>{setShowForm(false);setEditTarget(null);}} style={{
+              flex:1, padding:"11px",
+              background:"rgba(255,255,255,0.05)", border:`1px solid ${border}`,
+              borderRadius:7, color:txt3, fontSize:12, letterSpacing:2,
+              textTransform:"uppercase", fontFamily:"'Oswald',sans-serif",
+              fontWeight:500, cursor:"pointer",
+            }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Coming up strip */}
+      {enriched.length > 0 && (
+        <div style={{ background:bgCard2, borderRadius:10, padding:"12px 14px", marginBottom:16, border:`1px solid rgba(255,255,255,0.08)` }}>
+          <div style={{ fontSize:10, color:txt3, letterSpacing:3, marginBottom:10, fontFamily:"'Oswald',sans-serif", fontWeight:600 }}>COMING UP</div>
+          {enriched.slice(0,3).map((ev,i) => {
+            const cat = CAL_CATEGORIES[ev.category] || CAL_CATEGORIES.Other;
+            const days = daysUntil(ev.nextDate);
+            return (
+              <div key={ev.id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom: i<2?8:0 }}>
+                <span style={{ fontSize:18 }}>{cat.icon}</span>
+                <span style={{ fontSize:14, color:txt, fontWeight:600, flex:1 }}>{ev.name}</span>
+                <span style={{ fontSize:12, color:cat.color, fontWeight:700 }}>
+                  {days===0?"Today!":days===1?"Tomorrow":`${days}d`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Chronological list */}
+      {enriched.length === 0 && !showForm && (
+        <div style={{ textAlign:"center", padding:"32px 16px", color:dim, fontSize:13 }}>
+          No dates yet — tap + Add to get started
+        </div>
+      )}
+
+      {enriched.map(ev => {
+        const cat = CAL_CATEGORIES[ev.category] || CAL_CATEGORIES.Other;
+        const days = daysUntil(ev.nextDate);
+        const isRecurring = ev.recurring==="TRUE"||ev.recurring===true;
+        const isSoon = days !== null && days <= 7;
+        return (
+          <div key={ev.id} style={{
+            display:"flex", alignItems:"stretch", borderRadius:10, marginBottom:8, overflow:"hidden",
+            border:`1px solid ${isSoon ? cat.color+"55" : border}`,
+            background: isSoon ? `${cat.color}11` : bgCard,
+          }}>
+            {/* Color strip */}
+            <div style={{ width:4, background:cat.color, flexShrink:0 }} />
+            <div style={{ flex:1, padding:"12px 14px", display:"flex", alignItems:"center", gap:12 }}>
+              <span style={{ fontSize:26, flexShrink:0 }}>{cat.icon}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                  <span style={{ fontSize:15, color:txt, fontWeight:700 }}>{ev.name}</span>
+                  {isRecurring && <span style={{ fontSize:8, color:cat.color, background:`${cat.color}22`, padding:"2px 5px", borderRadius:3, letterSpacing:1, fontFamily:"'Oswald',sans-serif", fontWeight:600 }}>YEARLY</span>}
+                </div>
+                <div style={{ fontSize:12, color:txt3, marginTop:2 }}>{fmtCalDate(ev.nextDate, isRecurring)}</div>
+                {ev.notes && <div style={{ fontSize:11, color:dim, marginTop:2 }}>{ev.notes}</div>}
+              </div>
+              <div style={{ textAlign:"right", flexShrink:0 }}>
+                <div style={{ fontSize:14, color:isSoon?cat.color:txt2, fontWeight:700 }}>
+                  {days===0?"Today!":days===1?"Tomorrow":`${days}d`}
+                </div>
+                <div style={{ display:"flex", gap:6, marginTop:6, justifyContent:"flex-end" }}>
+                  <button onClick={()=>openEdit(ev)} style={{ background:"rgba(255,255,255,0.06)", border:`1px solid ${border}`, borderRadius:5, padding:"3px 8px", color:txt3, fontSize:11, cursor:"pointer" }}>Edit</button>
+                  <button onClick={()=>handleDelete(ev)} disabled={deleting===ev.id} style={{ background:"rgba(255,50,50,0.08)", border:"1px solid rgba(255,80,80,0.2)", borderRadius:5, padding:"3px 8px", color:red, fontSize:11, cursor:"pointer" }}>
+                    {deleting===ev.id?"...":"✕"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Past one-time events */}
+      {past.length > 0 && (
+        <div style={{ marginTop:16 }}>
+          <div style={{ fontSize:10, color:dim, letterSpacing:3, marginBottom:10, fontFamily:"'Oswald',sans-serif" }}>PAST</div>
+          {past.map(ev => {
+            const cat = CAL_CATEGORIES[ev.category] || CAL_CATEGORIES.Other;
+            return (
+              <div key={ev.id} style={{ display:"flex", alignItems:"stretch", borderRadius:10, marginBottom:6, overflow:"hidden", border:`1px solid ${border}`, opacity:0.45 }}>
+                <div style={{ width:4, background:cat.color, flexShrink:0 }} />
+                <div style={{ flex:1, padding:"10px 14px", display:"flex", alignItems:"center", gap:10 }}>
+                  <span style={{ fontSize:22 }}>{cat.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:14, color:txt2, fontWeight:600 }}>{ev.name}</div>
+                    <div style={{ fontSize:11, color:dim }}>{new Date(ev.date+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>
+                  </div>
+                  <button onClick={()=>handleDelete(ev)} disabled={deleting===ev.id} style={{ background:"rgba(255,50,50,0.08)", border:"1px solid rgba(255,80,80,0.2)", borderRadius:5, padding:"3px 8px", color:red, fontSize:11, cursor:"pointer" }}>
+                    {deleting===ev.id?"...":"✕"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── MAIN APP ───────────────────────────────────────── */
 export default function App() {
   const tabs = SEASON === "halloween"
-    ? ["Status", "Crew", "Weather", "Reviews", "🎃 Games"]
-    : ["Status", "Crew", "Weather", "Reviews"];
+    ? ["Status", "Crew", "Weather", "Reviews", "🎃 Games", "📅 Dates"]
+    : ["Status", "Crew", "Weather", "Reviews", "📅 Dates"];
 
   const [myName, setMyName]           = useState(()=>localStorage.getItem("cockpit_user")||null);
   const [crew, setCrew]               = useState([]);
   const [tonight, setTonight]         = useState(null);
   const [events, setEvents]           = useState([]);
   const [reviews, setReviews]         = useState([]);
+  const [calendarEvents, setCalendarEvents] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [notifBanner, setNotifBanner] = useState(null);
   const [notifAsked, setNotifAsked]   = useState(()=>localStorage.getItem("cockpit_notif_asked")||false);
@@ -1711,16 +1987,18 @@ export default function App() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [crewRes, tonightRes, eventsRes, reviewsRes] = await Promise.all([
+      const [crewRes, tonightRes, eventsRes, reviewsRes, calRes] = await Promise.all([
         apiGet("getCrew"),
         apiGet("getTonight"),
         apiGet("getEvents"),
         apiGet("getReviews"),
+        apiGet("getCalendar"),
       ]);
-      if (crewRes.crew)        setCrew(crewRes.crew);
-      if (tonightRes.tonight)  setTonight(tonightRes.tonight);
-      if (eventsRes.events)    setEvents(eventsRes.events);
-      if (reviewsRes.reviews)  setReviews(reviewsRes.reviews);
+      if (crewRes.crew)           setCrew(crewRes.crew);
+      if (tonightRes.tonight)     setTonight(tonightRes.tonight);
+      if (eventsRes.events)       setEvents(eventsRes.events);
+      if (reviewsRes.reviews)     setReviews(reviewsRes.reviews);
+      if (calRes.events)          setCalendarEvents(calRes.events);
       setError(null);
     } catch(e) {
       setError("Couldn't reach The Cockpit. Check your connection.");
@@ -1829,6 +2107,21 @@ export default function App() {
 
   const deleteReview = async (index) => {
     await apiPost({ action:"deleteReview", index });
+    await fetchAll();
+  };
+
+  const addCalendarEvent = async (ev) => {
+    await apiPost({ action:"addCalendarEvent", category:ev.category, name:ev.name, date:ev.date, notes:ev.notes||"", recurring:ev.recurring?true:false, addedBy:ev.addedBy||myName });
+    await fetchAll();
+  };
+
+  const editCalendarEvent = async (ev) => {
+    await apiPost({ action:"editCalendarEvent", id:ev.id, category:ev.category, name:ev.name, date:ev.date, notes:ev.notes||"", recurring:ev.recurring?true:false });
+    await fetchAll();
+  };
+
+  const deleteCalendarEvent = async (id) => {
+    await apiPost({ action:"deleteCalendarEvent", id });
     await fetchAll();
   };
 
@@ -2017,6 +2310,40 @@ export default function App() {
           {/* STATUS */}
           {activeTab==="Status" && (
             <div>
+              {/* Calendar reminders — within 7 days */}
+              {(() => {
+                const soon = calendarEvents
+                  .map(ev => ({ ...ev, nextDate: getNextOccurrence(ev.date, ev.recurring) }))
+                  .filter(ev => ev.nextDate !== null && daysUntil(ev.nextDate) >= 0 && daysUntil(ev.nextDate) <= 7)
+                  .sort((a,b) => a.nextDate - b.nextDate);
+                if (!soon.length) return null;
+                return (
+                  <div style={{ marginBottom:16 }}>
+                    {soon.map(ev => {
+                      const cat = CAL_CATEGORIES[ev.category] || CAL_CATEGORIES.Other;
+                      const days = daysUntil(ev.nextDate);
+                      return (
+                        <div key={ev.id} onClick={()=>setActiveTab("📅 Dates")} style={{
+                          display:"flex", alignItems:"center", gap:12,
+                          padding:"12px 14px", borderRadius:10, marginBottom:6, cursor:"pointer",
+                          background:`${cat.color}15`,
+                          border:`1px solid ${cat.color}55`,
+                        }}>
+                          <span style={{ fontSize:22 }}>{cat.icon}</span>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontSize:14, color:txt, fontWeight:700 }}>{ev.name}</div>
+                            <div style={{ fontSize:11, color:cat.color, marginTop:1 }}>
+                              {days===0?"Today!":days===1?"Tomorrow":`In ${days} days`} · {fmtCalDate(ev.nextDate, ev.recurring==="TRUE"||ev.recurring===true)}
+                            </div>
+                          </div>
+                          <span style={{ fontSize:10, color:cat.color, letterSpacing:1, fontFamily:"'Oswald',sans-serif", fontWeight:600 }}>↗</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
               {/* TV Widget — top of status */}
               <Label>On the TV</Label>
               <TVWidget isHost={isHost} whatsOn={tonight?.whatsOn||"Nothing on"} onSetWhatsOn={setWhatsOn} />
@@ -2199,6 +2526,16 @@ export default function App() {
 
           {/* HALLOWEEN GAMES */}
           {activeTab==="🎃 Games" && <HalloweenGamesTab />}
+
+          {activeTab==="📅 Dates" && (
+            <CalendarTab
+              calEvents={calendarEvents}
+              myName={myName}
+              onAdd={addCalendarEvent}
+              onEdit={editCalendarEvent}
+              onDelete={deleteCalendarEvent}
+            />
+          )}
 
         </div>
 
